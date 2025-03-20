@@ -1,0 +1,50 @@
+[
+  {
+    "id": "78684fff-b10f-4926-b8b9-7185c7ce9a13",
+    "title": "Mystical Forest",
+    "category": "Environment",
+    "description": ".",
+    "image": "/uploads/e1daa011-cfaa-4092-ba02-f6fd7b714a4f.jpg",
+    "createdAt": "2025-03-16T11:01:06.092Z"
+  },
+  {
+    "id": "a7e54d16-ed2a-4e9d-a853-8272ab87ca0b",
+    "title": "Futuristic City",
+    "category": "Environment",
+    "description": ".",
+    "image": "/uploads/cad2e910-6b6c-43e2-ac9f-0b2d2c0701f4.jpg",
+    "createdAt": "2025-03-16T11:01:44.432Z"
+  },
+  {
+    "id": "90867057-1e29-41d3-ba6a-b9afa2f3fe22",
+    "title": "Digital Warrior",
+    "category": "3D Character",
+    "description": ".",
+    "image": "/uploads/216311c4-a138-4058-a72b-04f133ccb4f1.jpg",
+    "createdAt": "2025-03-16T11:02:28.183Z"
+  },
+  {
+    "id": "bf2b3ad2-1c2e-4f9e-ba55-dc2a118aa155",
+    "title": "Cyber Realm",
+    "category": "Concept Art",
+    "description": ".",
+    "image": "/uploads/2c6c3f42-64cc-46f6-996d-289e22e64ecf.jpg",
+    "createdAt": "2025-03-16T11:08:54.339Z"
+  },
+  {
+    "id": "9b457e5a-efa5-4a17-b900-26214de7f1ad",
+    "title": "Crystal Cave",
+    "category": "Environment",
+    "description": ".",
+    "image": "/uploads/d8d15eda-e412-4b9a-8872-be650bbaf47f.jpg",
+    "createdAt": "2025-03-16T11:09:41.625Z"
+  },
+  {
+    "id": "e59527f6-b1e9-47e3-9ebb-b5f598706424",
+    "title": "Hasheeem",
+    "category": "Concept art",
+    "description": ".....",
+    "image": "/uploads/825b4cbf-5774-4dfd-a849-384830743c7c.jpg",
+    "createdAt": "2025-03-17T01:39:34.324Z"
+  }
+]
