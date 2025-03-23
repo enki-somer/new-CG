@@ -3,6 +3,7 @@ const nextConfig = {
   output: "export",
   images: {
     unoptimized: true,
+    domains: ["localhost"],
   },
   // Ensure your app works with GitHub Pages
   basePath: process.env.NODE_ENV === "production" ? "/enki" : "",

@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "export": "next export"
+    "lint": "next lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -35,6 +34,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.10.1",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
