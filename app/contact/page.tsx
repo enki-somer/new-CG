@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
+
+interface ContactInfo {
+  email: string;
+  phone: string;
+  location: string;
+  availableFor: string[];
+}
 
 export default function ContactPage() {
   const [formState, setFormState] = useState({
@@ -11,6 +18,33 @@ export default function ContactPage() {
     subject: "",
     message: "",
   });
+
+  const [contactInfo, setContactInfo] = useState<ContactInfo>({
+    email: "contact@example.com",
+    phone: "+1 (555) 123-4567",
+    location: "Los Angeles, CA",
+    availableFor: ["Freelance", "Collaboration", "Full-time", "Consultation"],
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSiteInfo = async () => {
+      try {
+        const response = await fetch("/api/site-info");
+        if (response.ok) {
+          const data = await response.json();
+          setContactInfo(data.contact);
+        }
+      } catch (error) {
+        console.error("Failed to fetch contact info:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSiteInfo();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +68,7 @@ export default function ContactPage() {
                 Touch
               </span>
             </h1>
-            <p className="mx-auto max-w-[600px] text-lg text-gray-400">
+            <p className="mx-auto max-w-[600px] text-lg text-gray-200">
               Let's discuss your project and bring your vision to life
             </p>
           </div>
@@ -45,23 +79,23 @@ export default function ContactPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="rounded-xl bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm"
+                className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm shadow-lg"
               >
                 <h2 className="mb-6 text-xl font-semibold text-white">
                   Contact Information
                 </h2>
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-4 text-white/90">
+                  <div className="flex items-center space-x-4 text-white">
                     <Mail className="h-5 w-5 text-primary" />
-                    <span>contact@example.com</span>
+                    <span>{contactInfo.email}</span>
                   </div>
-                  <div className="flex items-center space-x-4 text-white/90">
+                  <div className="flex items-center space-x-4 text-white">
                     <Phone className="h-5 w-5 text-primary" />
-                    <span>+1 (555) 123-4567</span>
+                    <span>{contactInfo.phone}</span>
                   </div>
-                  <div className="flex items-center space-x-4 text-white/90">
+                  <div className="flex items-center space-x-4 text-white">
                     <MapPin className="h-5 w-5 text-primary" />
-                    <span>Los Angeles, CA</span>
+                    <span>{contactInfo.location}</span>
                   </div>
                 </div>
               </motion.div>
@@ -70,21 +104,16 @@ export default function ContactPage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="rounded-xl bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm"
+                className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm shadow-lg"
               >
                 <h2 className="mb-4 text-xl font-semibold text-white">
                   Available For
                 </h2>
                 <div className="flex flex-wrap gap-2">
-                  {[
-                    "Freelance",
-                    "Collaboration",
-                    "Full-time",
-                    "Consultation",
-                  ].map((item) => (
+                  {contactInfo.availableFor.map((item) => (
                     <span
                       key={item}
-                      className="rounded-full bg-primary/20 px-3 py-1 text-sm font-medium text-white"
+                      className="rounded-full bg-primary/30 px-3 py-1 text-sm font-medium text-white shadow-sm"
                     >
                       {item}
                     </span>
@@ -98,7 +127,7 @@ export default function ContactPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
               onSubmit={handleSubmit}
-              className="rounded-xl bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm"
+              className="rounded-xl border border-white/10 bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm shadow-lg"
             >
               <div className="grid gap-6">
                 <div className="grid gap-6 sm:grid-cols-2">
@@ -116,7 +145,7 @@ export default function ContactPage() {
                       onChange={(e) =>
                         setFormState({ ...formState, name: e.target.value })
                       }
-                      className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full rounded-lg border border-white/30 bg-black/50 px-4 py-2.5 text-white placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       placeholder="John Doe"
                     />
                   </div>
@@ -134,7 +163,7 @@ export default function ContactPage() {
                       onChange={(e) =>
                         setFormState({ ...formState, email: e.target.value })
                       }
-                      className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full rounded-lg border border-white/30 bg-black/50 px-4 py-2.5 text-white placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       placeholder="john@example.com"
                     />
                   </div>
@@ -153,7 +182,7 @@ export default function ContactPage() {
                     onChange={(e) =>
                       setFormState({ ...formState, subject: e.target.value })
                     }
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-lg border border-white/30 bg-black/50 px-4 py-2.5 text-white placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     placeholder="Project Discussion"
                   />
                 </div>
@@ -171,14 +200,17 @@ export default function ContactPage() {
                       setFormState({ ...formState, message: e.target.value })
                     }
                     rows={6}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-lg border border-white/30 bg-black/50 px-4 py-2.5 text-white placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     placeholder="Tell me about your project..."
                   />
                 </div>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{
+                    scale: 1.02,
+                    boxShadow: "0 0 15px rgba(59, 130, 246, 0.5)",
+                  }}
                   whileTap={{ scale: 0.98 }}
-                  className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-blue-500 px-6 py-3 text-white hover:from-primary/90 hover:to-blue-500/90"
+                  className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-blue-500 px-6 py-3 text-white font-medium shadow-md hover:from-primary hover:to-blue-600"
                 >
                   <Send className="mr-2 h-5 w-5" />
                   Send Message

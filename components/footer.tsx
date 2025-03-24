@@ -44,7 +44,7 @@ export function Footer() {
             </p>
           </div>
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Navigation</h3>
+            <h3 className="text-lg font-semibold text-white">Navigation</h3>
             <ul className="space-y-2">
               <li>
                 <Link
@@ -81,7 +81,7 @@ export function Footer() {
             </ul>
           </div>
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Services</h3>
+            <h3 className="text-lg font-semibold text-white">Services</h3>
             <ul className="space-y-2">
               <li className="text-sm text-gray-400">3D Character Design</li>
               <li className="text-sm text-gray-400">Environment Art</li>
@@ -90,7 +90,7 @@ export function Footer() {
             </ul>
           </div>
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Connect</h3>
+            <h3 className="text-lg font-semibold text-white">Connect</h3>
             <div className="flex space-x-4">
               {socialLinks.map((link) => {
                 const Icon = link.icon;

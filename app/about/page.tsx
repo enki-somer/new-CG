@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ParticlesBackground } from "@/components/particles-background";
+import { useEffect, useState } from "react";
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -18,7 +19,42 @@ const stagger = {
   },
 };
 
+interface AboutInfo {
+  title: string;
+  subtitle: string;
+  description: string[];
+  image: string;
+  skills: string[];
+}
+
 export default function AboutPage() {
+  const [aboutInfo, setAboutInfo] = useState<AboutInfo>({
+    title: "About Me",
+    subtitle: "CG Artist & Designer",
+    description: [],
+    image: "/images/cg (3).jpg",
+    skills: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSiteInfo = async () => {
+      try {
+        const response = await fetch("/api/site-info");
+        if (response.ok) {
+          const data = await response.json();
+          setAboutInfo(data.about);
+        }
+      } catch (error) {
+        console.error("Failed to fetch about info:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSiteInfo();
+  }, []);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-primary/20 to-black pt-24">
       <ParticlesBackground />
@@ -31,46 +67,22 @@ export default function AboutPage() {
         >
           <div className="order-2 lg:order-1">
             <h1 className="mb-6 text-4xl font-bold tracking-tighter text-white sm:text-5xl md:text-6xl">
-              About{" "}
+              {aboutInfo.title.split(" ")[0]}{" "}
               <span className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
-                Me
+                {aboutInfo.title.split(" ").slice(1).join(" ")}
               </span>
             </h1>
             <div className="space-y-6 text-lg text-white/90">
-              <p>
-                As a passionate CG artist, I blend creativity with technical
-                expertise to bring imagination to life. My journey in digital
-                art spans over several years, during which I've developed a deep
-                understanding of 3D modeling, texturing, and environmental
-                design.
-              </p>
-              <p>
-                I specialize in creating immersive environments and compelling
-                character designs that tell stories and evoke emotions. My work
-                combines traditional artistic principles with cutting-edge
-                digital techniques to achieve unique and memorable results.
-              </p>
-              <p>
-                Whether it's crafting detailed character models, designing
-                expansive environments, or creating concept art, I approach each
-                project with dedication and creativity. I'm constantly exploring
-                new techniques and pushing the boundaries of what's possible in
-                CG artistry.
-              </p>
+              {aboutInfo.description.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
             </div>
             <div className="mt-8 space-y-4">
               <h2 className="text-2xl font-semibold text-white">
                 Specializations
               </h2>
               <div className="flex flex-wrap gap-3">
-                {[
-                  "3D Modeling",
-                  "Environment Design",
-                  "Character Art",
-                  "Texturing",
-                  "Concept Art",
-                  "Digital Sculpting",
-                ].map((skill) => (
+                {aboutInfo.skills.map((skill) => (
                   <span
                     key={skill}
                     className="rounded-full bg-primary/20 px-4 py-2 text-sm font-medium text-white"
@@ -89,8 +101,8 @@ export default function AboutPage() {
           >
             <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/10 p-1 backdrop-blur-sm">
               <Image
-                src="/images/cg (3).jpg"
-                alt="Digital Warrior - Showcasing character design expertise"
+                src={aboutInfo.image}
+                alt={`${aboutInfo.title} - ${aboutInfo.subtitle}`}
                 fill
                 className="rounded-lg object-cover"
               />
