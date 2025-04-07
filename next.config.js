@@ -6,7 +6,7 @@ const nextConfig = {
     domains: ["localhost"],
   },
   // Ensure your app works with GitHub Pages
-  basePath: process.env.NODE_ENV === "production" ? "/enki" : "",
+  // basePath: process.env.NODE_ENV === "production" ? "/enki" : "",
 
   // Optimize chunking for better performance
   webpack: (config, { isServer }) => {
