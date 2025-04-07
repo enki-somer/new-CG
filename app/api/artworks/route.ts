@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { firestore } from "@/lib/firebase";
+import { collection, getDocs, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
 
 // Define the interface for an artwork item
 interface ArtworkItem {
@@ -10,10 +10,8 @@ interface ArtworkItem {
   category: string;
   image: string;
   description: string;
-  createdAt?: string; // Optional createdAt field from POST
+  createdAt?: string;
 }
-
-const dataFilePath = path.join(process.cwd(), "data", "artworks.json");
 
 const initialArtworks = [
   {
@@ -53,40 +51,52 @@ const initialArtworks = [
   },
 ];
 
-// Initialize data file if it doesn't exist
-async function initDataFile() {
+// Helper to get the artworks collection
+function getArtworksCollection() {
+  return collection(firestore, 'artworks');
+}
+
+// Initialize the artworks collection with default data if it's empty
+async function initializeArtworksIfEmpty() {
   try {
-    await fs.access(dataFilePath);
-  } catch {
-    const dirPath = path.join(process.cwd(), "data");
-    try {
-      await fs.access(dirPath);
-    } catch {
-      await fs.mkdir(dirPath);
+    const artworksCollection = getArtworksCollection();
+    const snapshot = await getDocs(artworksCollection);
+    
+    if (snapshot.empty) {
+      console.log("Initializing artworks collection with default data");
+      
+      // Add each default artwork to the collection
+      for (const artwork of initialArtworks) {
+        await addDoc(artworksCollection, artwork);
+      }
     }
-    await fs.writeFile(dataFilePath, JSON.stringify(initialArtworks));
+  } catch (error) {
+    console.error("Error initializing artworks:", error);
   }
-}
-
-// Helper to read artworks
-async function getArtworks() {
-  await initDataFile();
-  const data = await fs.readFile(dataFilePath, "utf8");
-  return JSON.parse(data);
-}
-
-// Helper to write artworks
-async function writeArtworks(artworks: ArtworkItem[]) {
-  await fs.writeFile(dataFilePath, JSON.stringify(artworks, null, 2));
 }
 
 // GET /api/artworks
 export async function GET() {
   try {
-    const artworks = await getArtworks();
+    // Make sure artworks are initialized
+    await initializeArtworksIfEmpty();
+    
+    // Get all artworks from Firestore
+    const artworksCollection = getArtworksCollection();
+    const snapshot = await getDocs(artworksCollection);
+    
+    const artworks: ArtworkItem[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      artworks.push({
+        ...data,
+        id: doc.id,
+      } as ArtworkItem);
+    });
+    
     return NextResponse.json(artworks);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error fetching artworks:", error);
     return NextResponse.json(
       { error: "Failed to fetch artworks" },
       { status: 500 }
@@ -97,21 +107,25 @@ export async function GET() {
 // POST /api/artworks
 export async function POST(request: NextRequest) {
   try {
-    const artworks = await getArtworks();
     const data = await request.json();
-
+    
     const newArtwork = {
-      id: uuidv4(),
       ...data,
       createdAt: new Date().toISOString(),
     };
-
-    artworks.push(newArtwork);
-    await writeArtworks(artworks);
-
-    return NextResponse.json(newArtwork, { status: 201 });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
+    
+    const artworksCollection = getArtworksCollection();
+    const docRef = await addDoc(artworksCollection, newArtwork);
+    
+    return NextResponse.json(
+      { 
+        id: docRef.id,
+        ...newArtwork 
+      }, 
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Error creating artwork:", error);
     return NextResponse.json(
       { error: "Failed to create artwork" },
       { status: 500 }
@@ -124,28 +138,20 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
+    
     if (!id) {
       return NextResponse.json(
         { error: "Artwork ID is required" },
         { status: 400 }
       );
     }
-
-    const artworks: ArtworkItem[] = await getArtworks();
-    const updatedArtworks = artworks.filter((artwork: ArtworkItem) => artwork.id !== id);
-
-    if (artworks.length === updatedArtworks.length) {
-      return NextResponse.json(
-        { error: "Artwork not found" },
-        { status: 404 }
-      );
-    }
-
-    await writeArtworks(updatedArtworks);
+    
+    const artworkDoc = doc(firestore, 'artworks', id);
+    await deleteDoc(artworkDoc);
+    
     return NextResponse.json({ success: true });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_error) {
+  } catch (error) {
+    console.error("Error deleting artwork:", error);
     return NextResponse.json(
       { error: "Failed to delete artwork" },
       { status: 500 }
