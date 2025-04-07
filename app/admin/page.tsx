@@ -199,18 +199,30 @@ export default function AdminPage() {
 
   const handleDeleteArtwork = async (id: string) => {
     try {
+      setIsLoading(true);
+      setError("");
+
+      console.log(`Attempting to delete artwork with ID: ${id}`);
       const response = await fetch(`/api/artworks?id=${id}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Failed to delete artwork");
+      const responseData = await response.json().catch(() => ({}));
 
+      if (!response.ok) {
+        console.error("Delete artwork error response:", responseData);
+        throw new Error(`Failed to delete artwork: ${response.status}`);
+      }
+
+      // Remove the artwork from the state
       setArtworks(artworks.filter((artwork) => artwork.id !== id));
       setSuccess("Artwork deleted successfully!");
       setDeleteConfirm(null);
-    } catch (_error: unknown) {
-      console.error("Failed to delete artwork:", _error);
-      setError("Failed to delete artwork");
+    } catch (error: any) {
+      console.error("Failed to delete artwork:", error);
+      setError(`Failed to delete artwork: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 

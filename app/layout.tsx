@@ -17,6 +17,10 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Enki",
   description: "Portfolio showcasing stunning CG artwork and projects",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/favicon.svg" }],
+  },
 };
 
 interface RootLayoutProps {
@@ -32,6 +36,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="dns-prefetch" href="https://localhost:3000" />
         {/* Preload critical assets */}
         <link rel="preload" href="/images/cg (2).jpg" as="image" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body
         className={`${spaceGrotesk.className} antialiased bg-black`}
