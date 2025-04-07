@@ -1,0 +1,12 @@
+[build]
+  # Base directory is implicitly the root now
+  command = "npm run build"
+  # Publish directory is handled by the plugin
+
+[build.environment]
+  # Optional: Keep telemetry disabled if desired
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Ensure the Next.js plugin is used
+[[plugins]]
+  package = "@netlify/plugin-nextjs" 
