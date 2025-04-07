@@ -20,7 +20,7 @@ const ManualImageUpload: React.FC<ManualImageUploadProps> = ({
 
         <div className="prose prose-sm mb-4">
           <p className="text-yellow-600 font-medium">
-            Due to Netlify's serverless function limitations, we can't
+            Due to Netlify&apos;s serverless function limitations, we can&apos;t
             automatically save uploaded images.
           </p>
 

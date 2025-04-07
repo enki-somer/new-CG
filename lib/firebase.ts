@@ -47,7 +47,7 @@ try {
   console.log("Firebase initialized successfully");
 } catch (error) {
   console.error("Firebase initialization error:", error);
-  // @ts-ignore - Provide a dummy implementation that won't crash
+  // @ts-expect-error - Provide a dummy implementation that won't crash
   firestore = new DummyFirestore() as Firestore;
 }
 

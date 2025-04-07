@@ -10,6 +10,9 @@ export function ThreeScene() {
   useEffect(() => {
     if (!mountRef.current) return;
 
+    // Store ref value in a variable for cleanup function
+    const mountNode = mountRef.current;
+
     // Scene setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
@@ -20,7 +23,7 @@ export function ThreeScene() {
     );
     const renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    mountRef.current.appendChild(renderer.domElement);
+    mountNode.appendChild(renderer.domElement);
 
     // Create geometry
     const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
@@ -67,7 +70,7 @@ export function ThreeScene() {
     window.addEventListener("resize", handleResize);
 
     return () => {
-      mountRef.current?.removeChild(renderer.domElement);
+      mountNode.removeChild(renderer.domElement);
       window.removeEventListener("resize", handleResize);
     };
   }, []);
