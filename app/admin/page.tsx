@@ -16,7 +16,6 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import ManualImageUpload from "@/components/admin/ManualImageUpload";
 
 interface ArtworkItem {
   id: string;
@@ -87,10 +86,6 @@ export default function AdminPage() {
     about: false,
     contact: false,
   });
-
-  // Add new state for manual upload
-  const [showManualUpload, setShowManualUpload] = useState(false);
-  const [uploadedFilename, setUploadedFilename] = useState("");
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -217,10 +212,6 @@ export default function AdminPage() {
 
       const data = await response.json();
       setNewArtwork({ ...newArtwork, image: data.url });
-
-      // Show manual upload instructions
-      setUploadedFilename(data.id || data.url.split("/").pop());
-      setShowManualUpload(true);
     } catch (_error: unknown) {
       console.error("Failed to upload image:", _error);
       setError("Failed to upload image");
@@ -369,13 +360,7 @@ export default function AdminPage() {
         },
       });
 
-      // Show manual upload instructions for about image
-      setUploadedFilename(data.id || data.url.split("/").pop());
-      setShowManualUpload(true);
-
-      setSuccess(
-        "About image metadata saved. Please follow instructions to complete the upload."
-      );
+      setSuccess("About image updated successfully!");
     } catch (_error: unknown) {
       console.error("Failed to upload about image:", _error);
       setError("Failed to upload about image");
@@ -983,13 +968,6 @@ export default function AdminPage() {
           )}
         </motion.div>
       </div>
-
-      {/* Add this at the end, right before the closing main tag */}
-      <ManualImageUpload
-        filename={uploadedFilename}
-        visible={showManualUpload}
-        onClose={() => setShowManualUpload(false)}
-      />
     </main>
   );
 }
