@@ -112,6 +112,7 @@ export default function AdminPage() {
       const data = await response.json();
       setArtworks(data);
     } catch (_error: any) {
+      console.error("Failed to fetch artworks:", _error);
       setError("Failed to load artworks");
     }
   };
@@ -128,6 +129,7 @@ export default function AdminPage() {
         setTempDescription(data.about.description);
       }
     } catch (_error: any) {
+      console.error("Failed to load site info:", _error);
       setError("Failed to load site information");
     }
   };
@@ -172,6 +174,7 @@ export default function AdminPage() {
       });
       setSuccess("Artwork added successfully!");
     } catch (_error: any) {
+      console.error("Failed to add artwork:", _error);
       setError("Failed to add artwork");
     } finally {
       setIsLoading(false);
@@ -190,6 +193,7 @@ export default function AdminPage() {
       setSuccess("Artwork deleted successfully!");
       setDeleteConfirm(null);
     } catch (_error: any) {
+      console.error("Failed to delete artwork:", _error);
       setError("Failed to delete artwork");
     }
   };
@@ -209,6 +213,7 @@ export default function AdminPage() {
       const data = await response.json();
       setNewArtwork({ ...newArtwork, image: data.url });
     } catch (_error: any) {
+      console.error("Failed to upload image:", _error);
       setError("Failed to upload image");
     }
   };
@@ -239,6 +244,7 @@ export default function AdminPage() {
       setIsEditing({ ...isEditing, about: false });
       setSuccess("About information updated successfully!");
     } catch (_error: any) {
+      console.error("Failed to update about info:", _error);
       setError("Failed to update about information");
     } finally {
       setIsLoading(false);
@@ -265,6 +271,7 @@ export default function AdminPage() {
       setIsEditing({ ...isEditing, contact: false });
       setSuccess("Contact information updated successfully!");
     } catch (_error: any) {
+      console.error("Failed to update contact info:", _error);
       setError("Failed to update contact information");
     } finally {
       setIsLoading(false);
@@ -354,6 +361,7 @@ export default function AdminPage() {
       });
       setSuccess("About image updated successfully!");
     } catch (_error: any) {
+      console.error("Failed to upload about image:", _error);
       setError("Failed to upload about image");
     }
   };
