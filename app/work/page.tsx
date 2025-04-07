@@ -36,6 +36,7 @@ export default function WorkPage() {
         if (!response.ok) throw new Error("Failed to fetch artworks");
         const data = (await response.json()) as ArtworkItem[];
         setArtworks(data);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (_error) {
         setError("Failed to load artworks");
       } finally {

@@ -85,6 +85,7 @@ export async function GET() {
   try {
     const artworks = await getArtworks();
     return NextResponse.json(artworks);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     return NextResponse.json(
       { error: "Failed to fetch artworks" },
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
     await writeArtworks(artworks);
 
     return NextResponse.json(newArtwork, { status: 201 });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     return NextResponse.json(
       { error: "Failed to create artwork" },
@@ -142,6 +144,7 @@ export async function DELETE(request: NextRequest) {
 
     await writeArtworks(updatedArtworks);
     return NextResponse.json({ success: true });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (_error) {
     return NextResponse.json(
       { error: "Failed to delete artwork" },

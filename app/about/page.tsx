@@ -5,20 +5,6 @@ import { motion } from "framer-motion";
 import { ParticlesBackground } from "@/components/particles-background";
 import { useEffect, useState } from "react";
 
-const fadeIn = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 },
-};
-
-const stagger = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
 interface AboutInfo {
   title: string;
   subtitle: string;
@@ -70,7 +56,7 @@ export default function AboutPage() {
               </span>
             </h1>
             <div className="space-y-6 text-lg text-white/90">
-              {aboutInfo.description.map((paragraph, index) => (
+              {aboutInfo.description.map((paragraph: string, index: number) => (
                 <p key={index}>{paragraph}</p>
               ))}
             </div>
@@ -79,7 +65,7 @@ export default function AboutPage() {
                 Specializations
               </h2>
               <div className="flex flex-wrap gap-3">
-                {aboutInfo.skills.map((skill) => (
+                {aboutInfo.skills.map((skill: string) => (
                   <span
                     key={skill}
                     className="rounded-full bg-primary/20 px-4 py-2 text-sm font-medium text-white"
