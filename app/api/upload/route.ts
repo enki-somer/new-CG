@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
 
     if (!file) {
+      console.error("POST /api/upload - No file provided");
       return NextResponse.json(
         { error: "No file uploaded" },
         { status: 400 }
@@ -26,11 +27,14 @@ export async function POST(request: NextRequest) {
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
+      console.error("POST /api/upload - Invalid file type:", file.type);
       return NextResponse.json(
         { error: "File must be an image" },
         { status: 400 }
       );
     }
+
+    console.log(`POST /api/upload - Processing file: ${file.name}, Size: ${Math.round(file.size / 1024)}KB, Type: ${file.type}`);
 
     // Extract file information
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -38,10 +42,12 @@ export async function POST(request: NextRequest) {
     
     try {
       // Upload to Cloudinary
-      console.log("Uploading to Cloudinary...");
+      console.log("POST /api/upload - Uploading to Cloudinary...");
       const uploadResult = await uploadImage(buffer, 'cg-art') as CloudinaryUploadResult;
       
       if (!uploadResult || !uploadResult.secure_url) {
+        console.error("POST /api/upload - Cloudinary upload failed, no secure_url returned");
+        console.log("POST /api/upload - Cloudinary response:", uploadResult);
         throw new Error("Failed to upload to Cloudinary");
       }
       
@@ -49,7 +55,10 @@ export async function POST(request: NextRequest) {
       const cloudinaryUrl = uploadResult.secure_url;
       const publicId = uploadResult.public_id;
       
-      console.log("Image uploaded to Cloudinary:", { publicId, url: cloudinaryUrl });
+      console.log("POST /api/upload - Image uploaded to Cloudinary successfully:", { 
+        publicId, 
+        url: cloudinaryUrl.substring(0, 50) + '...' // Truncate for logging
+      });
       
       // Store metadata in Firestore (if available)
       try {
@@ -65,29 +74,30 @@ export async function POST(request: NextRequest) {
           
           const docRef = doc(firestore, 'images', filename);
           await setDoc(docRef, imageData);
-          console.log("Image metadata saved to Firestore");
+          console.log("POST /api/upload - Image metadata saved to Firestore");
         }
       } catch (firestoreError) {
         // Continue even if Firestore fails
-        console.error("Firestore error (non-critical):", firestoreError);
+        console.error("POST /api/upload - Firestore error (non-critical):", firestoreError);
       }
       
       // Return the Cloudinary URL
+      console.log("POST /api/upload - Returning successful response");
       return NextResponse.json({
         url: cloudinaryUrl,
         id: publicId
       });
     } catch (uploadError) {
-      console.error("Cloudinary upload error:", uploadError);
+      console.error("POST /api/upload - Cloudinary upload error:", uploadError);
       return NextResponse.json(
-        { error: "Failed to upload image to Cloudinary" },
+        { error: "Failed to upload image to Cloudinary", details: String(uploadError) },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("Upload process error:", error);
+    console.error("POST /api/upload - General error:", error);
     return NextResponse.json(
-      { error: "Failed to process upload" },
+      { error: "Failed to process upload", details: String(error) },
       { status: 500 }
     );
   }

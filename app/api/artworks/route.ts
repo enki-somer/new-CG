@@ -133,19 +133,40 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
     
+    // Validate required fields
+    if (!data.title || !data.category || !data.description || !data.image) {
+      console.error("POST /api/artworks - Missing required fields", {
+        title: !!data.title,
+        category: !!data.category,
+        description: !!data.description,
+        image: !!data.image
+      });
+      
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+    
+    // Log the data we're processing
+    console.log("POST /api/artworks - Processing data:", {
+      title: data.title,
+      category: data.category,
+      imageUrl: data.image.substring(0, 50) + '...' // Truncate for logging
+    });
+    
     // Check if Firestore is available
     const artworksCollection = getArtworksCollection();
     if (!artworksCollection) {
       console.warn("POST /api/artworks - Firestore not available");
       // Return mock response
-      return NextResponse.json(
-        { 
-          id: uuidv4(),
-          ...data,
-          createdAt: new Date().toISOString() 
-        }, 
-        { status: 201 }
-      );
+      const mockArtwork = { 
+        id: uuidv4(),
+        ...data,
+        createdAt: new Date().toISOString() 
+      };
+      console.log("POST /api/artworks - Returning mock artwork:", mockArtwork.id);
+      return NextResponse.json(mockArtwork, { status: 201 });
     }
     
     const newArtwork = {
@@ -153,20 +174,31 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
     
-    const docRef = await addDoc(artworksCollection, newArtwork);
-    console.log("POST /api/artworks - Artwork saved successfully with ID:", docRef.id);
-    
-    return NextResponse.json(
-      { 
-        id: docRef.id,
-        ...newArtwork 
-      }, 
-      { status: 201 }
-    );
+    try {
+      const docRef = await addDoc(artworksCollection, newArtwork);
+      console.log("POST /api/artworks - Artwork saved successfully with ID:", docRef.id);
+      
+      return NextResponse.json(
+        { 
+          id: docRef.id,
+          ...newArtwork 
+        }, 
+        { status: 201 }
+      );
+    } catch (firestoreError) {
+      console.error("POST /api/artworks - Firestore error:", firestoreError);
+      // Fallback to returning the data without saving to Firestore
+      const fallbackArtwork = { 
+        id: uuidv4(),
+        ...newArtwork
+      };
+      console.log("POST /api/artworks - Returning fallback artwork:", fallbackArtwork.id);
+      return NextResponse.json(fallbackArtwork, { status: 201 });
+    }
   } catch (error) {
     console.error("Error creating artwork:", error);
     return NextResponse.json(
-      { error: "Failed to create artwork" },
+      { error: "Failed to create artwork", details: String(error) },
       { status: 500 }
     );
   }

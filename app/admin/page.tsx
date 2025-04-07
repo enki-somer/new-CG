@@ -154,6 +154,16 @@ export default function AdminPage() {
     setSuccess("");
 
     try {
+      // Validate that we have an image
+      if (!newArtwork.image) {
+        setError("Please upload an image first");
+        setIsLoading(false);
+        return;
+      }
+
+      // Log the data we're sending to help debug
+      console.log("Sending artwork data:", newArtwork);
+
       const response = await fetch("/api/artworks", {
         method: "POST",
         headers: {
@@ -162,9 +172,15 @@ export default function AdminPage() {
         body: JSON.stringify(newArtwork),
       });
 
-      if (!response.ok) throw new Error("Failed to add artwork");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Server error response:", errorData);
+        throw new Error(`Failed to add artwork: ${response.status}`);
+      }
 
       const data = await response.json();
+      console.log("Artwork added successfully:", data);
+
       setArtworks([...artworks, data]);
       setNewArtwork({
         title: "",
@@ -173,9 +189,9 @@ export default function AdminPage() {
         image: "",
       });
       setSuccess("Artwork added successfully!");
-    } catch (_error: unknown) {
-      console.error("Failed to add artwork:", _error);
-      setError("Failed to add artwork");
+    } catch (error: any) {
+      console.error("Failed to add artwork:", error);
+      setError(`Failed to add artwork: ${error.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -200,21 +216,38 @@ export default function AdminPage() {
 
   const handleImageUpload = async (file: File) => {
     try {
+      setIsLoading(true);
+      setError("");
+
       const formData = new FormData();
       formData.append("file", file);
 
+      console.log("Uploading image to Cloudinary...");
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Failed to upload image");
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`Failed to upload image: ${errorText}`);
+      }
 
       const data = await response.json();
-      setNewArtwork({ ...newArtwork, image: data.url });
-    } catch (_error: unknown) {
-      console.error("Failed to upload image:", _error);
-      setError("Failed to upload image");
+      console.log("Image upload successful:", data);
+
+      // Use the Cloudinary URL from the response
+      if (data.url) {
+        setNewArtwork({ ...newArtwork, image: data.url });
+        setSuccess("Image uploaded successfully!");
+      } else {
+        throw new Error("No image URL returned from server");
+      }
+    } catch (error: any) {
+      console.error("Failed to upload image:", error);
+      setError(`Failed to upload image: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -341,29 +374,46 @@ export default function AdminPage() {
 
   const handleAboutImageUpload = async (file: File) => {
     try {
+      setIsLoading(true);
+      setError("");
+
       const formData = new FormData();
       formData.append("file", file);
 
+      console.log("Uploading about image to Cloudinary...");
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Failed to upload about image");
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`Failed to upload about image: ${errorText}`);
+      }
 
       const data = await response.json();
-      setSiteInfo({
-        ...siteInfo,
-        about: {
-          ...siteInfo.about,
-          image: data.url,
-        },
-      });
+      console.log("About image upload successful:", data);
 
-      setSuccess("About image updated successfully!");
-    } catch (_error: unknown) {
-      console.error("Failed to upload about image:", _error);
-      setError("Failed to upload about image");
+      // Use the Cloudinary URL from the response
+      if (data.url) {
+        setSiteInfo({
+          ...siteInfo,
+          about: {
+            ...siteInfo.about,
+            image: data.url,
+          },
+        });
+        setSuccess("About image updated successfully!");
+      } else {
+        throw new Error("No image URL returned from server");
+      }
+    } catch (error: any) {
+      console.error("Failed to upload about image:", error);
+      setError(
+        `Failed to upload about image: ${error.message || "Unknown error"}`
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
