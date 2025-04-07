@@ -26,8 +26,6 @@ export default function ContactPage() {
     availableFor: ["Freelance", "Collaboration", "Full-time", "Consultation"],
   });
 
-  const [isLoading, setIsLoading] = useState(true);
-
   useEffect(() => {
     const fetchSiteInfo = async () => {
       try {
@@ -38,8 +36,6 @@ export default function ContactPage() {
         }
       } catch (error) {
         console.error("Failed to fetch contact info:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -69,7 +65,7 @@ export default function ContactPage() {
               </span>
             </h1>
             <p className="mx-auto max-w-[600px] text-lg text-gray-200">
-              Let's discuss your project and bring your vision to life
+              Let&apos;s discuss your project and bring your vision to life
             </p>
           </div>
 

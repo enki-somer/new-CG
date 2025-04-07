@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as fs from "fs";
 import * as path from "path";
-import { v4 as uuidv4 } from "uuid";
 
 // Define the data file path
 const dataDir = path.join(process.cwd(), "data");

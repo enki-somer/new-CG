@@ -35,7 +35,6 @@ export default function AboutPage() {
     image: "/images/cg (3).jpg",
     skills: [],
   });
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchSiteInfo = async () => {
@@ -47,8 +46,6 @@ export default function AboutPage() {
         }
       } catch (error) {
         console.error("Failed to fetch about info:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 

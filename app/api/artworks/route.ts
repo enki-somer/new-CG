@@ -3,6 +3,16 @@ import { promises as fs } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
+// Define the interface for an artwork item
+interface ArtworkItem {
+  id: string;
+  title: string;
+  category: string;
+  image: string;
+  description: string;
+  createdAt?: string; // Optional createdAt field from POST
+}
+
 const dataFilePath = path.join(process.cwd(), "data", "artworks.json");
 
 const initialArtworks = [
@@ -66,7 +76,7 @@ async function getArtworks() {
 }
 
 // Helper to write artworks
-async function writeArtworks(artworks: any[]) {
+async function writeArtworks(artworks: ArtworkItem[]) {
   await fs.writeFile(dataFilePath, JSON.stringify(artworks, null, 2));
 }
 
@@ -75,7 +85,7 @@ export async function GET() {
   try {
     const artworks = await getArtworks();
     return NextResponse.json(artworks);
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to fetch artworks" },
       { status: 500 }
@@ -99,7 +109,7 @@ export async function POST(request: NextRequest) {
     await writeArtworks(artworks);
 
     return NextResponse.json(newArtwork, { status: 201 });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to create artwork" },
       { status: 500 }
@@ -120,8 +130,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const artworks = await getArtworks();
-    const updatedArtworks = artworks.filter((artwork: any) => artwork.id !== id);
+    const artworks: ArtworkItem[] = await getArtworks();
+    const updatedArtworks = artworks.filter((artwork: ArtworkItem) => artwork.id !== id);
 
     if (artworks.length === updatedArtworks.length) {
       return NextResponse.json(
@@ -132,7 +142,7 @@ export async function DELETE(request: NextRequest) {
 
     await writeArtworks(updatedArtworks);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: "Failed to delete artwork" },
       { status: 500 }

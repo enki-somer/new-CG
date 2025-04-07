@@ -5,7 +5,6 @@ import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { CursorWrapper } from "@/components/cursor-wrapper";
 import Script from "next/script";
-import dynamic from "next/dynamic";
 
 // Load font with subset optimization
 const spaceGrotesk = Space_Grotesk({
