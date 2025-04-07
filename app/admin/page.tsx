@@ -111,7 +111,7 @@ export default function AdminPage() {
       if (!response.ok) throw new Error("Failed to fetch artworks");
       const data = await response.json();
       setArtworks(data);
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to fetch artworks:", _error);
       setError("Failed to load artworks");
     }
@@ -128,7 +128,7 @@ export default function AdminPage() {
       if (data.about && data.about.description) {
         setTempDescription(data.about.description);
       }
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to load site info:", _error);
       setError("Failed to load site information");
     }
@@ -173,7 +173,7 @@ export default function AdminPage() {
         image: "",
       });
       setSuccess("Artwork added successfully!");
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to add artwork:", _error);
       setError("Failed to add artwork");
     } finally {
@@ -192,7 +192,7 @@ export default function AdminPage() {
       setArtworks(artworks.filter((artwork) => artwork.id !== id));
       setSuccess("Artwork deleted successfully!");
       setDeleteConfirm(null);
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to delete artwork:", _error);
       setError("Failed to delete artwork");
     }
@@ -212,7 +212,7 @@ export default function AdminPage() {
 
       const data = await response.json();
       setNewArtwork({ ...newArtwork, image: data.url });
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to upload image:", _error);
       setError("Failed to upload image");
     }
@@ -243,7 +243,7 @@ export default function AdminPage() {
       setSiteInfo(data);
       setIsEditing({ ...isEditing, about: false });
       setSuccess("About information updated successfully!");
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to update about info:", _error);
       setError("Failed to update about information");
     } finally {
@@ -270,7 +270,7 @@ export default function AdminPage() {
       setSiteInfo(data);
       setIsEditing({ ...isEditing, contact: false });
       setSuccess("Contact information updated successfully!");
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to update contact info:", _error);
       setError("Failed to update contact information");
     } finally {
@@ -360,7 +360,7 @@ export default function AdminPage() {
         },
       });
       setSuccess("About image updated successfully!");
-    } catch (_error: any) {
+    } catch (_error: unknown) {
       console.error("Failed to upload about image:", _error);
       setError("Failed to upload about image");
     }
