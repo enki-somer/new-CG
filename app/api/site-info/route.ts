@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
+import { firestore as db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 // Define the data structure

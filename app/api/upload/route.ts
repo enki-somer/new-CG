@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { db } from "@/lib/firebase";
+import { firestore as db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,29 +23,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create unique filename
+    // For Netlify environment, we need to use a different approach
+    // We'll create a unique ID for the image and tell the frontend to use that in a form submission
     const ext = file.name.split(".").pop();
     const filename = `${uuidv4()}.${ext}`;
     
-    // Convert file to buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
-    
-    // For development: Save file to public/uploads directory
     try {
-      const uploadDir = join(process.cwd(), "public", "uploads");
-      
-      // Ensure upload directory exists
-      await mkdir(uploadDir, { recursive: true });
-      
-      // Write file to disk
-      await writeFile(join(uploadDir, filename), buffer);
-      
-      // Store minimal metadata in Firestore
+      // Using Firestore to store image tracking info (for admin interface)
       const imageData = {
         id: filename,
         filename: file.name,
         contentType: file.type,
         uploadDate: new Date().toISOString(),
+        // URL pattern for the image in the deployed site
         path: `/uploads/${filename}`
       };
       
@@ -55,15 +43,18 @@ export async function POST(request: NextRequest) {
       const docRef = doc(db, 'images', filename);
       await setDoc(docRef, imageData);
       
-      // Return the public URL
+      // Return the temporary URL and ID
+      // NOTE: This URL won't actually work until the image is manually uploaded to
+      // the repository in the public/uploads folder
       return NextResponse.json({
         url: `/uploads/${filename}`,
-        id: filename
+        id: filename,
+        message: "Image metadata saved. Image needs to be manually uploaded to the repository."
       });
     } catch (error) {
-      console.error("File save error:", error);
+      console.error("Firestore metadata save error:", error);
       return NextResponse.json(
-        { error: "Failed to save image file" },
+        { error: "Failed to save image metadata" },
         { status: 500 }
       );
     }
