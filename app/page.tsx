@@ -24,6 +24,58 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
+// Add a fallback list of artworks to use when API fails
+const fallbackArtworks: ArtworkItem[] = [
+  {
+    id: "1",
+    title: "Mystical Forest",
+    category: "Environment",
+    image: "/images/cg (1).jpg",
+    description:
+      "A serene and enchanting forest environment with magical elements.",
+  },
+  {
+    id: "2",
+    title: "Futuristic City",
+    category: "Environment",
+    image: "/images/cg (2).jpg",
+    description:
+      "A sprawling metropolis showcasing advanced architecture and technology.",
+  },
+  {
+    id: "3",
+    title: "Digital Warrior",
+    category: "3D Character",
+    image: "/images/cg (3).jpg",
+    description:
+      "A detailed character design blending traditional and futuristic elements.",
+  },
+  {
+    id: "4",
+    title: "Ancient Temple",
+    category: "Environment",
+    image: "/images/cg (4).jpg",
+    description:
+      "A mysterious temple environment with intricate architectural details.",
+  },
+  {
+    id: "5",
+    title: "Cyber Realm",
+    category: "Concept Art",
+    image: "/images/cg (5).jpg",
+    description:
+      "A conceptual piece exploring themes of technology and nature.",
+  },
+  {
+    id: "6",
+    title: "Neon Dreams",
+    category: "Concept Art",
+    image: "/images/cg (2).jpg", // Using an existing image as a duplicate for the example
+    description:
+      "A vibrant exploration of neon aesthetics in a futuristic setting.",
+  },
+];
+
 export default function Home() {
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
@@ -57,6 +109,7 @@ export default function Home() {
           cache: "force-cache",
         }).catch(async () => {
           // Retry once on failure
+          console.log("Retrying artwork fetch without cache");
           return await fetch("/api/artworks", {
             cache: "no-store",
           });
@@ -64,18 +117,38 @@ export default function Home() {
 
         clearTimeout(timeoutId);
 
-        if (!response.ok) throw new Error("Failed to fetch artworks");
-        const allArtworks = (await response.json()) as ArtworkItem[];
+        if (!response.ok) {
+          throw new Error(`Failed to fetch artworks: ${response.status}`);
+        }
+
+        const allArtworks = await response.json();
 
         // Ensure we have artworks before shuffling
-        if (allArtworks && allArtworks.length > 0) {
+        if (Array.isArray(allArtworks) && allArtworks.length > 0) {
+          console.log(
+            `Loaded ${allArtworks.length} artworks successfully for homepage`
+          );
           const randomWorks = shuffleArray([...allArtworks]).slice(0, 6);
           setFeaturedWorks(randomWorks);
+        } else {
+          console.warn(
+            "API returned empty artworks array for homepage, using fallback data"
+          );
+          // Use shuffled fallback data
+          const randomFallbackWorks = shuffleArray([...fallbackArtworks]).slice(
+            0,
+            6
+          );
+          setFeaturedWorks(randomFallbackWorks);
         }
       } catch (error) {
-        console.error("Failed to load artworks:", error);
-        // Set empty array to avoid blocking UI in case of error
-        setFeaturedWorks([]);
+        console.error("Failed to load artworks for homepage:", error);
+        // Use fallback data on error - shuffle to get a different set each time
+        const randomFallbackWorks = shuffleArray([...fallbackArtworks]).slice(
+          0,
+          6
+        );
+        setFeaturedWorks(randomFallbackWorks);
       } finally {
         setIsLoading(false);
       }
@@ -237,6 +310,14 @@ export default function Home() {
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        onError={(e) => {
+                          // If image fails to load, use a fallback image
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/images/cg (3).jpg"; // Fallback to a default image
+                          console.log(
+                            `Image failed to load: ${artwork.image}, using fallback`
+                          );
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-dark opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                       <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-all duration-300 group-hover:opacity-100">

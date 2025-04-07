@@ -170,6 +170,7 @@ export default function AdminPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(newArtwork),
+        cache: "no-store", // Ensure we're not using cached response
       });
 
       if (!response.ok) {
@@ -181,14 +182,32 @@ export default function AdminPage() {
       const data = await response.json();
       console.log("Artwork added successfully:", data);
 
+      // Add to the state
       setArtworks([...artworks, data]);
+
+      // Clear the form
       setNewArtwork({
         title: "",
         category: "",
         description: "",
         image: "",
       });
+
       setSuccess("Artwork added successfully!");
+
+      // Force a revalidation by making a GET request with no cache
+      // This helps ensure the new artwork appears in the gallery
+      try {
+        await fetch("/api/artworks", {
+          method: "GET",
+          cache: "no-store",
+          headers: { "x-force-revalidate": "true" },
+        });
+        console.log("Forced revalidation of artworks");
+      } catch (revalidateError) {
+        console.warn("Failed to force revalidation:", revalidateError);
+        // We don't need to show this error to the user
+      }
     } catch (error: any) {
       console.error("Failed to add artwork:", error);
       setError(`Failed to add artwork: ${error.message || "Unknown error"}`);
@@ -205,6 +224,7 @@ export default function AdminPage() {
       console.log(`Attempting to delete artwork with ID: ${id}`);
       const response = await fetch(`/api/artworks?id=${id}`, {
         method: "DELETE",
+        cache: "no-store", // Ensure we're not using cached response
       });
 
       const responseData = await response.json().catch(() => ({}));
@@ -218,6 +238,23 @@ export default function AdminPage() {
       setArtworks(artworks.filter((artwork) => artwork.id !== id));
       setSuccess("Artwork deleted successfully!");
       setDeleteConfirm(null);
+
+      // Force a revalidation by making a GET request with no cache
+      // This helps ensure the deleted artwork doesn't appear in the gallery
+      try {
+        await fetch("/api/artworks", {
+          method: "GET",
+          cache: "no-store",
+          headers: { "x-force-revalidate": "true" },
+        });
+        console.log("Forced revalidation of artworks after deletion");
+      } catch (revalidateError) {
+        console.warn(
+          "Failed to force revalidation after deletion:",
+          revalidateError
+        );
+        // We don't need to show this error to the user
+      }
     } catch (error: any) {
       console.error("Failed to delete artwork:", error);
       setError(`Failed to delete artwork: ${error.message || "Unknown error"}`);

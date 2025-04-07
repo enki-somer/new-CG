@@ -94,36 +94,52 @@ async function initializeArtworksIfEmpty() {
 // GET /api/artworks
 export async function GET() {
   console.log("GET /api/artworks - started");
+  
+  // Always have static data available as a fallback
+  const staticArtworks = initialArtworks;
+  
   try {
     // Check if Firestore is available
     const artworksCollection = getArtworksCollection();
     if (!artworksCollection) {
       console.warn("GET /api/artworks - Using static data (Firestore not available)");
-      return NextResponse.json(getStaticArtworks());
+      return NextResponse.json(staticArtworks);
     }
     
-    // Make sure artworks are initialized
-    await initializeArtworksIfEmpty();
-    
-    // Get all artworks from Firestore
-    const snapshot = await getDocs(artworksCollection);
-    
-    const artworks: ArtworkItem[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      artworks.push({
-        ...data,
-        id: doc.id,
-      } as ArtworkItem);
-    });
-    
-    console.log(`GET /api/artworks - Fetched ${artworks.length} artworks successfully`);
-    return NextResponse.json(artworks);
+    try {
+      // Make sure artworks are initialized
+      await initializeArtworksIfEmpty();
+      
+      // Get all artworks from Firestore
+      const snapshot = await getDocs(artworksCollection);
+      
+      const artworks: ArtworkItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        artworks.push({
+          ...data,
+          id: doc.id,
+        } as ArtworkItem);
+      });
+      
+      // If we got artworks from Firestore, return those
+      if (artworks.length > 0) {
+        console.log(`GET /api/artworks - Fetched ${artworks.length} artworks successfully from Firestore`);
+        return NextResponse.json(artworks);
+      }
+      
+      // Otherwise, use the static data
+      console.log("GET /api/artworks - No artworks in Firestore, using static data");
+      return NextResponse.json(staticArtworks);
+    } catch (firestoreError) {
+      // Catch specific Firestore errors
+      console.error("GET /api/artworks - Firestore error:", firestoreError);
+      return NextResponse.json(staticArtworks);
+    }
   } catch (error) {
-    console.error("Error fetching artworks:", error);
-    // Fallback to static data if there's an error
-    console.warn("GET /api/artworks - Falling back to static data due to error");
-    return NextResponse.json(getStaticArtworks());
+    // Catch any other errors
+    console.error("GET /api/artworks - General error:", error);
+    return NextResponse.json(staticArtworks);
   }
 }
 
@@ -162,7 +178,10 @@ export async function POST(request: NextRequest) {
       // Return mock response
       const mockArtwork = { 
         id: uuidv4(),
-        ...data,
+        title: data.title,
+        category: data.category,
+        description: data.description,
+        image: data.image,
         createdAt: new Date().toISOString() 
       };
       console.log("POST /api/artworks - Returning mock artwork:", mockArtwork.id);
@@ -170,7 +189,10 @@ export async function POST(request: NextRequest) {
     }
     
     const newArtwork = {
-      ...data,
+      title: data.title,
+      category: data.category,
+      description: data.description,
+      image: data.image,
       createdAt: new Date().toISOString(),
     };
     
@@ -178,19 +200,27 @@ export async function POST(request: NextRequest) {
       const docRef = await addDoc(artworksCollection, newArtwork);
       console.log("POST /api/artworks - Artwork saved successfully with ID:", docRef.id);
       
-      return NextResponse.json(
-        { 
-          id: docRef.id,
-          ...newArtwork 
-        }, 
-        { status: 201 }
-      );
+      // Return the complete artwork with ID
+      const createdArtwork = {
+        id: docRef.id,
+        title: data.title,
+        category: data.category,
+        description: data.description,
+        image: data.image,
+        createdAt: newArtwork.createdAt
+      };
+      
+      return NextResponse.json(createdArtwork, { status: 201 });
     } catch (firestoreError) {
       console.error("POST /api/artworks - Firestore error:", firestoreError);
       // Fallback to returning the data without saving to Firestore
       const fallbackArtwork = { 
         id: uuidv4(),
-        ...newArtwork
+        title: data.title,
+        category: data.category,
+        description: data.description,
+        image: data.image,
+        createdAt: newArtwork.createdAt
       };
       console.log("POST /api/artworks - Returning fallback artwork:", fallbackArtwork.id);
       return NextResponse.json(fallbackArtwork, { status: 201 });

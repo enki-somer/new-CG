@@ -12,6 +12,50 @@ interface ArtworkItem {
   description: string;
 }
 
+// Add a fallback list of artworks to use when API fails
+const fallbackArtworks: ArtworkItem[] = [
+  {
+    id: "1",
+    title: "Mystical Forest",
+    category: "Environment",
+    image: "/images/cg (1).jpg",
+    description:
+      "A serene and enchanting forest environment with magical elements.",
+  },
+  {
+    id: "2",
+    title: "Futuristic City",
+    category: "Environment",
+    image: "/images/cg (2).jpg",
+    description:
+      "A sprawling metropolis showcasing advanced architecture and technology.",
+  },
+  {
+    id: "3",
+    title: "Digital Warrior",
+    category: "3D Character",
+    image: "/images/cg (3).jpg",
+    description:
+      "A detailed character design blending traditional and futuristic elements.",
+  },
+  {
+    id: "4",
+    title: "Ancient Temple",
+    category: "Environment",
+    image: "/images/cg (4).jpg",
+    description:
+      "A mysterious temple environment with intricate architectural details.",
+  },
+  {
+    id: "5",
+    title: "Cyber Realm",
+    category: "Concept Art",
+    image: "/images/cg (5).jpg",
+    description:
+      "A conceptual piece exploring themes of technology and nature.",
+  },
+];
+
 export default function WorkPage() {
   const [artworks, setArtworks] = useState<ArtworkItem[]>([]);
   const [error, setError] = useState("");
@@ -30,15 +74,47 @@ export default function WorkPage() {
   useEffect(() => {
     const fetchArtworks = async () => {
       try {
+        // Add retries and improved error handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const response = await fetch("/api/artworks", {
           next: { revalidate: 3600 }, // Cache for 1 hour
+          signal: controller.signal,
+          cache: "force-cache",
+        }).catch(async () => {
+          // Retry once on failure with no cache
+          console.log("Retrying artwork fetch without cache");
+          return await fetch("/api/artworks", {
+            cache: "no-store",
+          });
         });
-        if (!response.ok) throw new Error("Failed to fetch artworks");
-        const data = (await response.json()) as ArtworkItem[];
-        setArtworks(data);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (_error) {
-        setError("Failed to load artworks");
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch artworks: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Verify we got an array with items
+        if (Array.isArray(data) && data.length > 0) {
+          console.log(`Loaded ${data.length} artworks successfully`);
+          setArtworks(data);
+        } else {
+          console.warn(
+            "API returned empty artworks array, using fallback data"
+          );
+          setArtworks(fallbackArtworks);
+        }
+      } catch (error) {
+        console.error("Failed to load artworks:", error);
+        setError(
+          "Unable to load artworks from server. Showing fallback gallery."
+        );
+        // Use fallback data on error
+        setArtworks(fallbackArtworks);
       } finally {
         setIsLoading(false);
       }
@@ -118,6 +194,14 @@ export default function WorkPage() {
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-110"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      onError={(e) => {
+                        // If image fails to load, use a fallback image
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/images/cg (3).jpg"; // Fallback to a default image
+                        console.log(
+                          `Image failed to load: ${artwork.image}, using fallback`
+                        );
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-dark opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                     <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-all duration-300 group-hover:opacity-100">
