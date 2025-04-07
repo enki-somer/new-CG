@@ -15,7 +15,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "KELWA",
+  title: "Enki",
   description: "Portfolio showcasing stunning CG artwork and projects",
 };
 
