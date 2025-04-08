@@ -80,17 +80,22 @@ export default function WorkPage() {
 
         // Add timestamp to prevent browser caching
         const timestamp = new Date().getTime();
+        const random = Math.random();
 
         // Try with multiple cache-busting techniques
-        const response = await fetch(`/api/artworks?t=${timestamp}`, {
-          next: { revalidate: 0 }, // Don't cache
-          signal: controller.signal,
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-          },
-          cache: "no-store",
-        })
+        const response = await fetch(
+          `/api/artworks?t=${timestamp}&r=${random}`,
+          {
+            next: { revalidate: 0 }, // Don't cache
+            signal: controller.signal,
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+              "x-force-revalidate": "true",
+            },
+            cache: "no-store",
+          }
+        )
           .catch(async () => {
             // Retry on failure with different approach
             console.log("Retrying artwork fetch without cache");
@@ -119,6 +124,9 @@ export default function WorkPage() {
         if (Array.isArray(data) && data.length > 0) {
           console.log(`Loaded ${data.length} artworks successfully`);
           setArtworks(data);
+
+          // Show their IDs for debugging
+          console.log("Artwork IDs loaded:", data.map((a) => a.id).join(", "));
         } else {
           console.warn(
             "API returned empty artworks array, using fallback data"
@@ -137,7 +145,16 @@ export default function WorkPage() {
       }
     };
 
+    // Initial fetch
     fetchArtworks();
+
+    // Then try once more after a short delay to check for updates
+    const refreshTimer = setTimeout(() => {
+      console.log("Performing second artwork fetch to check for updates...");
+      fetchArtworks();
+    }, 2000);
+
+    return () => clearTimeout(refreshTimer);
   }, []);
 
   return (

@@ -117,7 +117,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(staticArtworks, {
         headers: {
           'Cache-Control': 'no-store, must-revalidate',
-          'Vary': '*'
+          'Vary': '*',
+          'x-timestamp': Date.now().toString(),
+          'x-random': Math.random().toString()
         }
       });
     }
@@ -132,10 +134,21 @@ export async function GET(request: NextRequest) {
       const artworks: ArtworkItem[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        artworks.push({
+        const artwork = {
           ...data,
           id: doc.id,
-        } as ArtworkItem);
+        } as ArtworkItem;
+        artworks.push(artwork);
+        
+        // Add debug log for each artwork to help diagnose issues
+        console.log(`GET /api/artworks - Found artwork: ${artwork.id}, title: ${artwork.title}, createdAt: ${artwork.createdAt || 'not set'}`);
+      });
+      
+      // Sort artworks by createdAt date, newest first
+      artworks.sort((a, b) => {
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
       // If we got artworks from Firestore, return those
@@ -143,9 +156,14 @@ export async function GET(request: NextRequest) {
         console.log(`GET /api/artworks - Fetched ${artworks.length} artworks successfully from Firestore`);
         return NextResponse.json(artworks, {
           headers: {
-            'Cache-Control': 'no-store, must-revalidate',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Surrogate-Control': 'no-store',
             'Vary': '*',
-            'Server-Timestamp': new Date().toISOString()
+            'Server-Timestamp': new Date().toISOString(),
+            'x-timestamp': Date.now().toString(),
+            'x-random': Math.random().toString()
           }
         });
       }
@@ -155,7 +173,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(staticArtworks, {
         headers: {
           'Cache-Control': 'no-store, must-revalidate',
-          'Vary': '*'
+          'Vary': '*',
+          'x-timestamp': Date.now().toString(),
+          'x-random': Math.random().toString()
         }
       });
     } catch (firestoreError) {
@@ -164,7 +184,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(staticArtworks, {
         headers: {
           'Cache-Control': 'no-store, must-revalidate',
-          'Vary': '*'
+          'Vary': '*',
+          'x-timestamp': Date.now().toString(),
+          'x-random': Math.random().toString()
         }
       });
     }
@@ -174,7 +196,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(staticArtworks, {
       headers: {
         'Cache-Control': 'no-store, must-revalidate',
-        'Vary': '*'
+        'Vary': '*',
+        'x-timestamp': Date.now().toString(),
+        'x-random': Math.random().toString()
       }
     });
   }
@@ -222,7 +246,27 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString() 
       };
       console.log("POST /api/artworks - Returning mock artwork:", mockArtwork.id);
-      return NextResponse.json(mockArtwork, { status: 201 });
+      
+      // Try to revalidate the routes to ensure the new artwork appears
+      try {
+        await fetch(`${request.nextUrl.origin}/api/revalidate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ paths: ['/work', '/'] })
+        });
+      } catch (e) {
+        console.warn("Failed to revalidate paths after creating mock artwork:", e);
+      }
+      
+      return NextResponse.json(mockArtwork, { 
+        status: 201,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'x-timestamp': Date.now().toString()
+        }
+      });
     }
     
     const newArtwork = {
@@ -247,7 +291,27 @@ export async function POST(request: NextRequest) {
         createdAt: newArtwork.createdAt
       };
       
-      return NextResponse.json(createdArtwork, { status: 201 });
+      // Try to revalidate the routes to ensure the new artwork appears
+      try {
+        await fetch(`${request.nextUrl.origin}/api/revalidate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ paths: ['/work', '/'] })
+        });
+        console.log("Successfully revalidated paths after creating artwork");
+      } catch (e) {
+        console.warn("Failed to revalidate paths after creating artwork:", e);
+      }
+      
+      return NextResponse.json(createdArtwork, { 
+        status: 201,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'x-timestamp': Date.now().toString()
+        }
+      });
     } catch (firestoreError) {
       console.error("POST /api/artworks - Firestore error:", firestoreError);
       // Fallback to returning the data without saving to Firestore
@@ -260,7 +324,13 @@ export async function POST(request: NextRequest) {
         createdAt: newArtwork.createdAt
       };
       console.log("POST /api/artworks - Returning fallback artwork:", fallbackArtwork.id);
-      return NextResponse.json(fallbackArtwork, { status: 201 });
+      return NextResponse.json(fallbackArtwork, { 
+        status: 201,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'x-timestamp': Date.now().toString()
+        }
+      });
     }
   } catch (error) {
     console.error("Error creating artwork:", error);

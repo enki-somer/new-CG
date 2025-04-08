@@ -194,7 +194,7 @@ export default function AdminPage() {
         image: "",
       });
 
-      setSuccess("Artwork added successfully!");
+      setSuccess("Artwork added successfully! Refreshing gallery...");
 
       // Force a revalidation by making multiple GET requests with different cache-busting techniques
       try {
@@ -234,6 +234,20 @@ export default function AdminPage() {
         }
 
         console.log("Cache revalidation attempts completed");
+
+        // After all revalidation attempts, wait a moment then redirect to force a reload
+        setTimeout(() => {
+          // Add success message and alert user
+          alert(
+            "Artwork added successfully! Opening the Work gallery page to see your new artwork."
+          );
+
+          // Open the /work page in a new tab to show the updated gallery
+          window.open("/work", "_blank");
+
+          // Refresh the current page to ensure we have fresh data
+          window.location.reload();
+        }, 1500);
       } catch (revalidateError) {
         console.warn("Failed to force revalidation:", revalidateError);
         // We don't need to show this error to the user

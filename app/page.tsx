@@ -105,17 +105,22 @@ export default function Home() {
 
         // Add timestamp to prevent browser caching
         const timestamp = new Date().getTime();
+        const random = Math.random();
 
         // Try with multiple cache-busting techniques
-        const response = await fetch(`/api/artworks?t=${timestamp}`, {
-          next: { revalidate: 0 }, // Don't cache
-          signal: controller.signal,
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-          },
-          cache: "no-store",
-        })
+        const response = await fetch(
+          `/api/artworks?t=${timestamp}&r=${random}`,
+          {
+            next: { revalidate: 0 }, // Don't cache
+            signal: controller.signal,
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+              "x-force-revalidate": "true",
+            },
+            cache: "no-store",
+          }
+        )
           .catch(async () => {
             // Retry on failure with different approach
             console.log("Retrying artwork fetch without cache");
@@ -145,6 +150,12 @@ export default function Home() {
           console.log(
             `Loaded ${allArtworks.length} artworks successfully for homepage`
           );
+          // Show their IDs for debugging
+          console.log(
+            "Artwork IDs loaded:",
+            allArtworks.map((a) => a.id).join(", ")
+          );
+
           const randomWorks = shuffleArray([...allArtworks]).slice(0, 6);
           setFeaturedWorks(randomWorks);
         } else {
@@ -171,7 +182,18 @@ export default function Home() {
       }
     };
 
+    // Initial fetch
     fetchArtworks();
+
+    // Then try once more after a short delay to check for updates
+    const refreshTimer = setTimeout(() => {
+      console.log(
+        "Performing second artwork fetch to check for updates on home page..."
+      );
+      fetchArtworks();
+    }, 2000);
+
+    return () => clearTimeout(refreshTimer);
   }, []);
 
   // Only render content when component is mounted
