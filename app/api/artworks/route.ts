@@ -92,8 +92,19 @@ async function initializeArtworksIfEmpty() {
 }
 
 // GET /api/artworks
-export async function GET() {
-  console.log("GET /api/artworks - started");
+export async function GET(request: NextRequest) {
+  // Extract any cache-busting parameters for logging
+  const { searchParams } = new URL(request.url);
+  const timestamp = searchParams.get('t');
+  const nocache = searchParams.get('nocache');
+  const forceRevalidate = request.headers.get('x-force-revalidate');
+  
+  console.log("GET /api/artworks - started", { 
+    timestamp,
+    nocache,
+    forceRevalidate: !!forceRevalidate,
+    cacheControl: request.headers.get('cache-control')
+  });
   
   // Always have static data available as a fallback
   const staticArtworks = initialArtworks;
@@ -103,7 +114,12 @@ export async function GET() {
     const artworksCollection = getArtworksCollection();
     if (!artworksCollection) {
       console.warn("GET /api/artworks - Using static data (Firestore not available)");
-      return NextResponse.json(staticArtworks);
+      return NextResponse.json(staticArtworks, {
+        headers: {
+          'Cache-Control': 'no-store, must-revalidate',
+          'Vary': '*'
+        }
+      });
     }
     
     try {
@@ -125,21 +141,42 @@ export async function GET() {
       // If we got artworks from Firestore, return those
       if (artworks.length > 0) {
         console.log(`GET /api/artworks - Fetched ${artworks.length} artworks successfully from Firestore`);
-        return NextResponse.json(artworks);
+        return NextResponse.json(artworks, {
+          headers: {
+            'Cache-Control': 'no-store, must-revalidate',
+            'Vary': '*',
+            'Server-Timestamp': new Date().toISOString()
+          }
+        });
       }
       
       // Otherwise, use the static data
       console.log("GET /api/artworks - No artworks in Firestore, using static data");
-      return NextResponse.json(staticArtworks);
+      return NextResponse.json(staticArtworks, {
+        headers: {
+          'Cache-Control': 'no-store, must-revalidate',
+          'Vary': '*'
+        }
+      });
     } catch (firestoreError) {
       // Catch specific Firestore errors
       console.error("GET /api/artworks - Firestore error:", firestoreError);
-      return NextResponse.json(staticArtworks);
+      return NextResponse.json(staticArtworks, {
+        headers: {
+          'Cache-Control': 'no-store, must-revalidate',
+          'Vary': '*'
+        }
+      });
     }
   } catch (error) {
     // Catch any other errors
     console.error("GET /api/artworks - General error:", error);
-    return NextResponse.json(staticArtworks);
+    return NextResponse.json(staticArtworks, {
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate',
+        'Vary': '*'
+      }
+    });
   }
 }
 

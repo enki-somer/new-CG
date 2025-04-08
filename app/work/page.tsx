@@ -78,17 +78,34 @@ export default function WorkPage() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch("/api/artworks", {
-          next: { revalidate: 3600 }, // Cache for 1 hour
+        // Add timestamp to prevent browser caching
+        const timestamp = new Date().getTime();
+
+        // Try with multiple cache-busting techniques
+        const response = await fetch(`/api/artworks?t=${timestamp}`, {
+          next: { revalidate: 0 }, // Don't cache
           signal: controller.signal,
-          cache: "force-cache",
-        }).catch(async () => {
-          // Retry once on failure with no cache
-          console.log("Retrying artwork fetch without cache");
-          return await fetch("/api/artworks", {
-            cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+          cache: "no-store",
+        })
+          .catch(async () => {
+            // Retry on failure with different approach
+            console.log("Retrying artwork fetch without cache");
+            return await fetch("/api/artworks", {
+              cache: "no-store",
+              headers: { "x-force-revalidate": "true" },
+            });
+          })
+          .catch(async () => {
+            // Third fallback attempt with different URL parameter
+            console.log("Third attempt for artwork fetch");
+            return await fetch(`/api/artworks?nocache=${Math.random()}`, {
+              cache: "no-store",
+            });
           });
-        });
 
         clearTimeout(timeoutId);
 

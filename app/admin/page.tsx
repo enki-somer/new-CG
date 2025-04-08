@@ -168,9 +168,10 @@ export default function AdminPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
         body: JSON.stringify(newArtwork),
-        cache: "no-store", // Ensure we're not using cached response
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -195,15 +196,44 @@ export default function AdminPage() {
 
       setSuccess("Artwork added successfully!");
 
-      // Force a revalidation by making a GET request with no cache
-      // This helps ensure the new artwork appears in the gallery
+      // Force a revalidation by making multiple GET requests with different cache-busting techniques
       try {
+        console.log("Force revalidating artwork cache...");
+
+        // Method 1: Use no-store cache option
         await fetch("/api/artworks", {
           method: "GET",
           cache: "no-store",
-          headers: { "x-force-revalidate": "true" },
+          headers: {
+            "x-force-revalidate": "true",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
         });
-        console.log("Forced revalidation of artworks");
+
+        // Method 2: Use timestamp query parameter to bust cache
+        const timestamp = new Date().getTime();
+        await fetch(`/api/artworks?t=${timestamp}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        // Method 3: Attempt to manually revalidate the paths
+        try {
+          await fetch("/api/revalidate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              paths: ["/work", "/"],
+            }),
+          });
+        } catch (revalidatePathError) {
+          console.warn("Path revalidation failed:", revalidatePathError);
+        }
+
+        console.log("Cache revalidation attempts completed");
       } catch (revalidateError) {
         console.warn("Failed to force revalidation:", revalidateError);
         // We don't need to show this error to the user
