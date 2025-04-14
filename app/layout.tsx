@@ -47,9 +47,32 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div id="main-content">{children}</div>
         <Footer />
 
-        {/* Disable Grammarly and similar extensions on this site */}
-        <Script id="disable-grammar-extensions" strategy="afterInteractive">
+        {/* Error handling and performance improvements */}
+        <Script id="error-handling" strategy="afterInteractive">
           {`
+            // Global error handler to prevent unhandled errors from crashing the app
+            window.addEventListener('error', function(event) {
+              // Don't show errors in production unless they're critical
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn('Caught error:', event.error);
+              }
+              // Prevent the error from completely crashing the app
+              event.preventDefault();
+              return true;
+            });
+            
+            // Fix for common third-party script errors
+            window.addEventListener('unhandledrejection', function(event) {
+              // Don't show errors in production unless they're critical
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn('Unhandled promise rejection:', event.reason);
+              }
+              // Prevent the error from completely crashing the app
+              event.preventDefault();
+              return true;
+            });
+            
+            // Disable Grammarly and similar extensions on this site
             document.body.setAttribute('data-grammarly-skip', 'true');
             
             // Force removal of extension attributes that cause hydration warnings
@@ -59,6 +82,30 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 document.documentElement.removeAttribute('data-new-gr-c-s-check-loaded');
                 document.body.removeAttribute('data-gr-ext-installed');
                 document.body.removeAttribute('data-new-gr-c-s-check-loaded');
+                
+                // Fix any WebGL context errors
+                const canvases = document.querySelectorAll('canvas');
+                canvases.forEach(canvas => {
+                  if (canvas.parentElement && !canvas.getAttribute('data-processed')) {
+                    const style = window.getComputedStyle(canvas.parentElement);
+                    if (style.display === 'none' || style.visibility === 'hidden') {
+                      canvas.parentElement.style.display = 'block';
+                      canvas.parentElement.style.visibility = 'visible';
+                      canvas.setAttribute('data-processed', 'true');
+                    }
+                  }
+                });
+                
+                // Remove any duplicate canvas elements (common Three.js issue)
+                const containers = document.querySelectorAll('[class*="three-scene"]');
+                containers.forEach(container => {
+                  const canvases = container.querySelectorAll('canvas');
+                  if (canvases.length > 1) {
+                    for (let i = 1; i < canvases.length; i++) {
+                      canvases[i].remove();
+                    }
+                  }
+                });
               }, 100);
             });
           `}

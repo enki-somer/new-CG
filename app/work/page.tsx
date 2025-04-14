@@ -148,13 +148,16 @@ export default function WorkPage() {
     // Initial fetch
     fetchArtworks();
 
-    // Then try once more after a short delay to check for updates
-    const refreshTimer = setTimeout(() => {
-      console.log("Performing second artwork fetch to check for updates...");
-      fetchArtworks();
-    }, 2000);
+    // Remove the duplicate fetch after 2 seconds
+    // const refreshTimer = setTimeout(() => {
+    //   console.log("Performing second artwork fetch to check for updates...");
+    //   fetchArtworks();
+    // }, 2000);
 
-    return () => clearTimeout(refreshTimer);
+    // return () => clearTimeout(refreshTimer);
+
+    // Simple cleanup function
+    return () => {};
   }, []);
 
   return (

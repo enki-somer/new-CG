@@ -1,0 +1,37 @@
+// Firestore rules for enki-a2377 project
+// Copy and paste these rules into your Firebase Console
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to all authenticated users
+    // match /{document=**} {
+    //   allow read, write: if request.auth != null;
+    // }
+    
+    // FOR DEVELOPMENT: Allow public read/write access
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // PRODUCTION RULES (Uncomment and modify these when going to production)
+    
+    // Match the artworks collection
+    // match /artworks/{artworkId} {
+    //   allow read: if true; // Allow anyone to read artwork data
+    //   allow write: if request.auth != null; // Only allow authenticated users to create/update/delete
+    // }
+    
+    // Match the images collection
+    // match /images/{imageId} {
+    //   allow read: if true; // Allow anyone to read image metadata
+    //   allow write: if request.auth != null; // Only allow authenticated users to upload images
+    // }
+    
+    // Match the site-info collection
+    // match /site-info/{document} {
+    //   allow read: if true; // Anyone can read site info
+    //   allow write: if request.auth != null; // Only authenticated users can update site info
+    // }
+  }
+} 

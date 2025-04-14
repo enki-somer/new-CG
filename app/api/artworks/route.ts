@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { firestore } from "@/lib/firebase";
-import { collection, getDocs, addDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, query, where, updateDoc } from "firebase/firestore";
 
 // Define the interface for an artwork item
 interface ArtworkItem {
@@ -20,6 +20,7 @@ const initialArtworks = [
     category: "Environment",
     image: "/images/cg (1).jpg",
     description: "A serene and enchanting forest environment with magical elements.",
+    createdAt: new Date().toISOString(),
   },
   {
     id: "2",
@@ -27,6 +28,7 @@ const initialArtworks = [
     category: "Environment",
     image: "/images/cg (2).jpg",
     description: "A sprawling metropolis showcasing advanced architecture and technology.",
+    createdAt: new Date().toISOString(),
   },
   {
     id: "3",
@@ -34,6 +36,7 @@ const initialArtworks = [
     category: "3D Character",
     image: "/images/cg (3).jpg",
     description: "A detailed character design blending traditional and futuristic elements.",
+    createdAt: new Date().toISOString(),
   },
   {
     id: "4",
@@ -41,6 +44,7 @@ const initialArtworks = [
     category: "Environment",
     image: "/images/cg (4).jpg",
     description: "A mysterious temple environment with intricate architectural details.",
+    createdAt: new Date().toISOString(),
   },
   {
     id: "5",
@@ -48,6 +52,7 @@ const initialArtworks = [
     category: "Concept Art",
     image: "/images/cg (5).jpg",
     description: "A conceptual piece exploring themes of technology and nature.",
+    createdAt: new Date().toISOString(),
   },
 ];
 
@@ -84,6 +89,24 @@ async function initializeArtworksIfEmpty() {
       // Add each default artwork to the collection
       for (const artwork of initialArtworks) {
         await addDoc(artworksCollection, artwork);
+      }
+    } else {
+      // Check for artworks missing createdAt field and update them
+      console.log("Checking for artworks missing createdAt field");
+      let updatedCount = 0;
+      
+      snapshot.forEach(async (docSnapshot) => {
+        const data = docSnapshot.data();
+        if (!data.createdAt) {
+          // Add createdAt to artworks missing it
+          const docRef = doc(firestore, 'artworks', docSnapshot.id);
+          await updateDoc(docRef, { createdAt: new Date().toISOString() });
+          updatedCount++;
+        }
+      });
+      
+      if (updatedCount > 0) {
+        console.log(`Updated createdAt field for ${updatedCount} existing artworks`);
       }
     }
   } catch (error) {

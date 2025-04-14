@@ -1,14 +1,28 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import Particles from "react-particles";
 import type { Engine } from "tsparticles-engine";
 import { loadFull } from "tsparticles";
 
 export function ParticlesBackground() {
-  const particlesInit = useCallback(async (engine: Engine) => {
-    await loadFull(engine);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Only run on client-side
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
+
+  const particlesInit = useCallback(async (engine: Engine) => {
+    try {
+      await loadFull(engine);
+    } catch (error) {
+      console.log("Could not initialize particles:", error);
+    }
+  }, []);
+
+  // Don't render anything until client-side
+  if (!isMounted) return null;
 
   return (
     <Particles
@@ -24,7 +38,7 @@ export function ParticlesBackground() {
             value: "transparent",
           },
         },
-        fpsLimit: 120,
+        fpsLimit: 60, // Lower FPS limit to reduce CPU usage
         particles: {
           color: {
             value: "#ffffff",
@@ -43,7 +57,7 @@ export function ParticlesBackground() {
               default: "bounce",
             },
             random: true,
-            speed: 1,
+            speed: 0.8, // Slightly slower speed for better performance
             straight: false,
           },
           number: {
@@ -51,7 +65,7 @@ export function ParticlesBackground() {
               enable: true,
               area: 800,
             },
-            value: 80,
+            value: 50, // Reduced number of particles for better performance
           },
           opacity: {
             value: 0.2,
