@@ -40,6 +40,11 @@ try {
   logConfig();
   const firebaseConfig = getFirebaseConfig();
   
+  // Validate required config fields
+  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.authDomain) {
+    throw new Error("Missing required Firebase configuration fields");
+  }
+  
   // Initialize Firebase if not already initialized
   let app: FirebaseApp;
   if (!getApps().length) {
@@ -50,9 +55,14 @@ try {
     app = getApps()[0];
   }
   
-  // Initialize Firestore
-  firestore = getFirestore(app);
-  console.log("Firestore initialized successfully");
+  // Initialize Firestore with error handling
+  try {
+    firestore = getFirestore(app);
+    console.log("Firestore initialized successfully");
+  } catch (firestoreError) {
+    console.error("Failed to initialize Firestore:", firestoreError);
+    throw firestoreError;
+  }
 } catch (error) {
   console.error("Firebase initialization error:", error);
   

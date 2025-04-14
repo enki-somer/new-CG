@@ -53,21 +53,81 @@ const defaultSiteInfo: SiteInfo = {
 
 // GET handler - retrieve site information
 export async function GET() {
-  try {
-    const docRef = doc(db, 'site', 'info');
-    const docSnap = await getDoc(docRef);
+  console.log("[API] GET /api/site-info - Request received");
+  
+  // Log Firestore status
+  const firestoreStatus = {
+    isInitialized: !!db,
+    isDummy: db && 'collection' in db && typeof db.collection === 'function' && db.collection.toString().includes('dummy'),
+    type: db ? typeof db : 'undefined'
+  };
+  console.log("[API] GET /api/site-info - Firestore status:", firestoreStatus);
 
-    if (docSnap.exists()) {
-      return NextResponse.json(docSnap.data());
-    } else {
-      // Initialize with default data if it doesn't exist
-      await setDoc(docRef, defaultSiteInfo);
-      return NextResponse.json(defaultSiteInfo);
+  try {
+    // Check if Firestore is properly initialized
+    if (!db) {
+      console.log("[API] GET /api/site-info - Firestore not initialized, returning default data");
+      return NextResponse.json(defaultSiteInfo, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+    }
+
+    console.log("[API] GET /api/site-info - Attempting to fetch document from Firestore");
+    const docRef = doc(db, 'site', 'info');
+    
+    try {
+      const docSnap = await getDoc(docRef);
+      console.log("[API] GET /api/site-info - Document fetch attempt completed");
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        console.log("[API] GET /api/site-info - Document exists, returning data");
+        return NextResponse.json(data, {
+          status: 200,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+      } else {
+        // Initialize with default data if it doesn't exist
+        console.log("[API] GET /api/site-info - Document doesn't exist, initializing with default data");
+        try {
+          await setDoc(docRef, defaultSiteInfo);
+          console.log("[API] GET /api/site-info - Successfully initialized with default data");
+          return NextResponse.json(defaultSiteInfo, {
+            status: 200,
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+        } catch (initError) {
+          console.error("[API] GET /api/site-info - Failed to initialize default data:", initError);
+          return NextResponse.json(
+            { error: "Failed to initialize site information" },
+            { status: 500 }
+          );
+        }
+      }
+    } catch (docError) {
+      console.error("[API] GET /api/site-info - Error fetching document:", docError);
+      return NextResponse.json(
+        { error: "Failed to fetch site information" },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error("Error reading site info:", error);
+    console.error("[API] GET /api/site-info - Error:", error);
     return NextResponse.json(
-      { error: "Failed to load site information" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

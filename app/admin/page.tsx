@@ -119,9 +119,34 @@ export default function AdminPage() {
 
   const fetchSiteInfo = async () => {
     try {
-      const response = await fetch("/api/site-info");
-      if (!response.ok) throw new Error("Failed to fetch site info");
+      console.log("[Admin] Starting site info fetch...");
+      const response = await fetch("/api/site-info", {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      });
+      console.log("[Admin] Site info response received:", {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Admin] Failed to fetch site info - Response not OK:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(
+          `Failed to fetch site info: ${response.status} ${response.statusText}`
+        );
+      }
+
       const data = await response.json();
+      console.log("[Admin] Site info fetched successfully:", data);
       setSiteInfo(data);
 
       // Initialize tempDescription for text area editing
@@ -129,7 +154,7 @@ export default function AdminPage() {
         setTempDescription(data.about.description);
       }
     } catch (_error: unknown) {
-      console.error("Failed to load site info:", _error);
+      console.error("[Admin] Failed to load site info:", _error);
       setError("Failed to load site information");
     }
   };
@@ -194,63 +219,36 @@ export default function AdminPage() {
         image: "",
       });
 
-      setSuccess("Artwork added successfully! Refreshing gallery...");
+      setSuccess("Artwork added successfully!");
 
-      // Force a revalidation by making multiple GET requests with different cache-busting techniques
+      // Revalidate paths without page refresh
       try {
-        console.log("Force revalidating artwork cache...");
+        await fetch("/api/revalidate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paths: ["/work", "/"],
+          }),
+        });
 
-        // Method 1: Use no-store cache option
-        await fetch("/api/artworks", {
-          method: "GET",
+        // Fetch updated artworks list
+        const updatedArtworksResponse = await fetch("/api/artworks", {
           cache: "no-store",
           headers: {
-            "x-force-revalidate": "true",
             "Cache-Control": "no-cache, no-store, must-revalidate",
             Pragma: "no-cache",
           },
         });
 
-        // Method 2: Use timestamp query parameter to bust cache
-        const timestamp = new Date().getTime();
-        await fetch(`/api/artworks?t=${timestamp}`, {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        // Method 3: Attempt to manually revalidate the paths
-        try {
-          await fetch("/api/revalidate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              paths: ["/work", "/"],
-            }),
-          });
-        } catch (revalidatePathError) {
-          console.warn("Path revalidation failed:", revalidatePathError);
+        if (updatedArtworksResponse.ok) {
+          const updatedArtworks = await updatedArtworksResponse.json();
+          setArtworks(updatedArtworks);
         }
-
-        console.log("Cache revalidation attempts completed");
-
-        // After all revalidation attempts, wait a moment then redirect to force a reload
-        setTimeout(() => {
-          // Add success message and alert user
-          alert(
-            "Artwork added successfully! Opening the Work gallery page to see your new artwork."
-          );
-
-          // Open the /work page in a new tab to show the updated gallery
-          window.open("/work", "_blank");
-
-          // Refresh the current page to ensure we have fresh data
-          window.location.reload();
-        }, 1500);
       } catch (revalidateError) {
-        console.warn("Failed to force revalidation:", revalidateError);
-        // We don't need to show this error to the user
+        console.warn("Failed to revalidate paths:", revalidateError);
+        // Don't show this error to the user since the artwork was still added successfully
       }
     } catch (error: any) {
       console.error("Failed to add artwork:", error);
