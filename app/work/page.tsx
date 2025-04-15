@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface ArtworkItem {
   id: string;
@@ -224,7 +225,10 @@ export default function WorkPage() {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   className="group relative overflow-hidden rounded-xl bg-gradient-glass p-1 shadow-glow backdrop-blur-sm transition-all duration-300 hover:shadow-glow-lg"
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                  <Link
+                    href={`/work/${artwork.id}`}
+                    className="relative block aspect-[4/3] overflow-hidden rounded-lg"
+                  >
                     <Image
                       src={artwork.image}
                       alt={artwork.title}
@@ -254,7 +258,7 @@ export default function WorkPage() {
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 </motion.div>
               ))}
         </div>

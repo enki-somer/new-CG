@@ -86,6 +86,9 @@ export default function AdminPage() {
     about: false,
     contact: false,
   });
+  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  const [editingArtwork, setEditingArtwork] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<ArtworkItem>>({});
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -179,36 +182,32 @@ export default function AdminPage() {
     setSuccess("");
 
     try {
-      // Validate that we have an image
       if (!newArtwork.image) {
-        setError("Please upload an image first");
+        setError("Please upload a main image first");
         setIsLoading(false);
         return;
       }
 
-      // Log the data we're sending to help debug
-      console.log("Sending artwork data:", newArtwork);
+      const artworkData = {
+        ...newArtwork,
+        additionalImages: additionalImages,
+      };
+
+      console.log("Sending artwork data:", artworkData);
 
       const response = await fetch("/api/artworks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
-        body: JSON.stringify(newArtwork),
-        cache: "no-store",
+        body: JSON.stringify(artworkData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Server error response:", errorData);
-        throw new Error(`Failed to add artwork: ${response.status}`);
+        throw new Error("Failed to add artwork");
       }
 
       const data = await response.json();
-      console.log("Artwork added successfully:", data);
-
-      // Add to the state
       setArtworks([...artworks, data]);
 
       // Clear the form
@@ -218,6 +217,7 @@ export default function AdminPage() {
         description: "",
         image: "",
       });
+      setAdditionalImages([]);
 
       setSuccess("Artwork added successfully!");
 
@@ -233,26 +233,17 @@ export default function AdminPage() {
           }),
         });
 
-        // Fetch updated artworks list
-        const updatedArtworksResponse = await fetch("/api/artworks", {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-          },
-        });
-
+        const updatedArtworksResponse = await fetch("/api/artworks");
         if (updatedArtworksResponse.ok) {
           const updatedArtworks = await updatedArtworksResponse.json();
           setArtworks(updatedArtworks);
         }
       } catch (revalidateError) {
         console.warn("Failed to revalidate paths:", revalidateError);
-        // Don't show this error to the user since the artwork was still added successfully
       }
     } catch (error: any) {
       console.error("Failed to add artwork:", error);
-      setError(`Failed to add artwork: ${error.message || "Unknown error"}`);
+      setError(`Failed to add artwork: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -508,6 +499,82 @@ export default function AdminPage() {
     }
   };
 
+  const handleAdditionalImageUpload = async (file: File) => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload additional image");
+      }
+
+      const data = await response.json();
+      setAdditionalImages([...additionalImages, data.url]);
+      setSuccess("Additional image uploaded successfully!");
+    } catch (error: any) {
+      console.error("Failed to upload additional image:", error);
+      setError(`Failed to upload additional image: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateArtwork = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const response = await fetch(`/api/artworks?id=${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update artwork");
+      }
+
+      // Update the artwork in the local state
+      setArtworks(
+        artworks.map((art) => (art.id === id ? { ...art, ...editForm } : art))
+      );
+
+      setSuccess("Artwork updated successfully!");
+      setEditingArtwork(null);
+      setEditForm({});
+
+      // Revalidate paths
+      try {
+        await fetch("/api/revalidate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paths: ["/work", "/", `/work/${id}`],
+          }),
+        });
+      } catch (revalidateError) {
+        console.warn("Failed to revalidate paths:", revalidateError);
+      }
+    } catch (error: any) {
+      console.error("Failed to update artwork:", error);
+      setError(`Failed to update artwork: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-black via-primary/20 to-black pt-24">
@@ -706,6 +773,51 @@ export default function AdminPage() {
                       )}
                     </div>
                   </div>
+                  {/* Additional Images Upload */}
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-white">
+                      Additional Images (Optional)
+                    </label>
+                    <div className="grid grid-cols-3 gap-4">
+                      {additionalImages.map((img, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <Image
+                            src={img}
+                            alt={`Additional image ${index + 1}`}
+                            fill
+                            className="rounded-lg object-cover"
+                          />
+                          <button
+                            onClick={() => {
+                              setAdditionalImages(
+                                additionalImages.filter((_, i) => i !== index)
+                              );
+                            }}
+                            className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {additionalImages.length < 3 && (
+                        <label className="relative flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-white/30 hover:border-primary">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleAdditionalImageUpload(file);
+                            }}
+                          />
+                          <Plus className="h-8 w-8 text-white/60" />
+                        </label>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      Upload up to 3 additional images (optional)
+                    </p>
+                  </div>
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -736,42 +848,124 @@ export default function AdminPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                       <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-all duration-300 group-hover:opacity-100">
                         <div className="w-full">
-                          <div className="mb-4 flex items-center justify-between">
-                            <h3 className="text-xl font-semibold text-white">
-                              {artwork.title}
-                            </h3>
-                            {deleteConfirm === artwork.id ? (
-                              <div className="flex items-center gap-2">
+                          {editingArtwork === artwork.id ? (
+                            <div className="space-y-4">
+                              <input
+                                type="text"
+                                value={editForm.title || ""}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    title: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-lg border border-white/20 bg-black/50 px-3 py-1.5 text-white"
+                                placeholder="Title"
+                              />
+                              <input
+                                type="text"
+                                value={editForm.category || ""}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    category: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-lg border border-white/20 bg-black/50 px-3 py-1.5 text-white"
+                                placeholder="Category"
+                              />
+                              <textarea
+                                value={editForm.description || ""}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    description: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-lg border border-white/20 bg-black/50 px-3 py-1.5 text-white"
+                                placeholder="Description"
+                                rows={3}
+                              />
+                              <div className="flex gap-2">
                                 <button
                                   onClick={() =>
-                                    handleDeleteArtwork(artwork.id)
+                                    handleUpdateArtwork(artwork.id)
                                   }
-                                  className="rounded-lg bg-red-500 px-3 py-1 text-sm text-white hover:bg-red-600"
+                                  disabled={isLoading}
+                                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90"
                                 >
-                                  Confirm
+                                  <Save className="h-4 w-4" />
+                                  Save
                                 </button>
                                 <button
-                                  onClick={() => setDeleteConfirm(null)}
-                                  className="rounded-lg bg-gray-500 px-3 py-1 text-sm text-white hover:bg-gray-600"
+                                  onClick={() => {
+                                    setEditingArtwork(null);
+                                    setEditForm({});
+                                  }}
+                                  className="flex items-center gap-1 rounded-lg bg-gray-500 px-3 py-1.5 text-sm text-white hover:bg-gray-600"
                                 >
+                                  <X className="h-4 w-4" />
                                   Cancel
                                 </button>
                               </div>
-                            ) : (
-                              <button
-                                onClick={() => setDeleteConfirm(artwork.id)}
-                                className="rounded-full bg-red-500/20 p-2 text-red-500 hover:bg-red-500/30"
-                              >
-                                <Trash2 className="h-5 w-5" />
-                              </button>
-                            )}
-                          </div>
-                          <p className="mb-2 text-sm text-gray-300">
-                            {artwork.description}
-                          </p>
-                          <span className="inline-block rounded-full bg-primary/20 px-3 py-1 text-sm text-primary">
-                            {artwork.category}
-                          </span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-xl font-semibold text-white">
+                                  {artwork.title}
+                                </h3>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingArtwork(artwork.id);
+                                      setEditForm({
+                                        title: artwork.title,
+                                        category: artwork.category,
+                                        description: artwork.description,
+                                      });
+                                    }}
+                                    className="rounded-full bg-primary/20 p-2 text-primary hover:bg-primary/30"
+                                  >
+                                    <Edit className="h-5 w-5" />
+                                  </button>
+                                  {deleteConfirm === artwork.id ? (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteArtwork(artwork.id)
+                                        }
+                                        className="rounded-lg bg-red-500 px-3 py-1 text-sm text-white hover:bg-red-600"
+                                      >
+                                        Confirm
+                                      </button>
+                                      <button
+                                        onClick={() => setDeleteConfirm(null)}
+                                        className="rounded-lg bg-gray-500 px-3 py-1 text-sm text-white hover:bg-gray-600"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        setDeleteConfirm(artwork.id)
+                                      }
+                                      className="rounded-full bg-red-500/20 p-2 text-red-500 hover:bg-red-500/30"
+                                    >
+                                      <Trash2 className="h-5 w-5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="mb-2 text-sm text-gray-300">
+                                {artwork.description}
+                              </p>
+                              <p className="text-sm text-primary">
+                                {artwork.category}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

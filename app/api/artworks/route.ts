@@ -231,30 +231,29 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log("POST /api/artworks - started");
   try {
-    const data = await request.json();
-    
+    const body = await request.json();
+
     // Validate required fields
-    if (!data.title || !data.category || !data.description || !data.image) {
-      console.error("POST /api/artworks - Missing required fields", {
-        title: !!data.title,
-        category: !!data.category,
-        description: !!data.description,
-        image: !!data.image
-      });
-      
+    if (!body.title || !body.category || !body.description || !body.image) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
-    
-    // Log the data we're processing
-    console.log("POST /api/artworks - Processing data:", {
-      title: data.title,
-      category: data.category,
-      imageUrl: data.image.substring(0, 50) + '...' // Truncate for logging
-    });
-    
+
+    // Create artwork data with optional fields
+    const artworkData = {
+      title: body.title,
+      category: body.category,
+      description: body.description,
+      image: body.image,
+      additionalImages: body.additionalImages || [], // Add support for additional images
+      createdAt: Date.now(),
+      technique: body.technique || null,
+      dimensions: body.dimensions || null,
+      year: body.year || null,
+    };
+
     // Check if Firestore is available
     const artworksCollection = getArtworksCollection();
     if (!artworksCollection) {
@@ -262,10 +261,10 @@ export async function POST(request: NextRequest) {
       // Return mock response
       const mockArtwork = { 
         id: uuidv4(),
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        image: data.image,
+        title: body.title,
+        category: body.category,
+        description: body.description,
+        image: body.image,
         createdAt: new Date().toISOString() 
       };
       console.log("POST /api/artworks - Returning mock artwork:", mockArtwork.id);
@@ -292,73 +291,40 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    const newArtwork = {
-      title: data.title,
-      category: data.category,
-      description: data.description,
-      image: data.image,
-      createdAt: new Date().toISOString(),
+    const docRef = await addDoc(artworksCollection, artworkData);
+    console.log("POST /api/artworks - Artwork saved successfully with ID:", docRef.id);
+    
+    // Return the created artwork with its ID
+    const createdArtwork = {
+      id: docRef.id,
+      ...artworkData,
     };
     
+    // Try to revalidate the routes to ensure the new artwork appears
     try {
-      const docRef = await addDoc(artworksCollection, newArtwork);
-      console.log("POST /api/artworks - Artwork saved successfully with ID:", docRef.id);
-      
-      // Return the complete artwork with ID
-      const createdArtwork = {
-        id: docRef.id,
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        image: data.image,
-        createdAt: newArtwork.createdAt
-      };
-      
-      // Try to revalidate the routes to ensure the new artwork appears
-      try {
-        await fetch(`${request.nextUrl.origin}/api/revalidate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ paths: ['/work', '/'] })
-        });
-        console.log("Successfully revalidated paths after creating artwork");
-      } catch (e) {
-        console.warn("Failed to revalidate paths after creating artwork:", e);
-      }
-      
-      return NextResponse.json(createdArtwork, { 
-        status: 201,
+      await fetch(`${request.nextUrl.origin}/api/revalidate`, {
+        method: 'POST',
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'x-timestamp': Date.now().toString()
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paths: ['/work', '/'] })
       });
-    } catch (firestoreError) {
-      console.error("POST /api/artworks - Firestore error:", firestoreError);
-      // Fallback to returning the data without saving to Firestore
-      const fallbackArtwork = { 
-        id: uuidv4(),
-        title: data.title,
-        category: data.category,
-        description: data.description,
-        image: data.image,
-        createdAt: newArtwork.createdAt
-      };
-      console.log("POST /api/artworks - Returning fallback artwork:", fallbackArtwork.id);
-      return NextResponse.json(fallbackArtwork, { 
-        status: 201,
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'x-timestamp': Date.now().toString()
-        }
-      });
+      console.log("Successfully revalidated paths after creating artwork");
+    } catch (e) {
+      console.warn("Failed to revalidate paths after creating artwork:", e);
     }
+    
+    return NextResponse.json(createdArtwork, { 
+      status: 201,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'x-timestamp': Date.now().toString()
+      }
+    });
   } catch (error) {
-    console.error("Error creating artwork:", error);
+    console.error("Error adding artwork:", error);
     return NextResponse.json(
-      { error: "Failed to create artwork", details: String(error) },
+      { error: "Failed to add artwork" },
       { status: 500 }
     );
   }
@@ -417,5 +383,60 @@ export async function DELETE(request: NextRequest) {
       { error: "Failed to delete artwork", details: String(error) },
       { status: 500 }
     );
+  }
+}
+
+// PUT /api/artworks?id={id}
+export async function PUT(request: NextRequest) {
+  console.log("PUT /api/artworks - started");
+  
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ error: "Artwork ID is required" }, { status: 400 });
+    }
+
+    const artworksCollection = getArtworksCollection();
+    if (!artworksCollection) {
+      return NextResponse.json({ error: "Database not available" }, { status: 503 });
+    }
+
+    const updateData = await request.json();
+    
+    // Validate required fields
+    if (!updateData.title || !updateData.category || !updateData.description) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Get reference to the specific artwork document
+    const artworkRef = doc(firestore, 'artworks', id);
+
+    // Update the artwork
+    await updateDoc(artworkRef, {
+      ...updateData,
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log(`PUT /api/artworks - Updated artwork ${id} successfully`);
+    
+    return NextResponse.json({ 
+      message: "Artwork updated successfully",
+      id 
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Vary': '*'
+      }
+    });
+  } catch (error: any) {
+    console.error("PUT /api/artworks - Error:", error);
+    return NextResponse.json({ 
+      error: "Failed to update artwork",
+      details: error.message 
+    }, { 
+      status: 500 
+    });
   }
 } 

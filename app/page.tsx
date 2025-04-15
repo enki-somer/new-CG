@@ -345,7 +345,10 @@ export default function Home() {
                     viewport={{ once: true }}
                     className="group relative overflow-hidden rounded-xl bg-gradient-glass p-1 shadow-glow backdrop-blur-sm transition-all duration-300 hover:shadow-glow-lg"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                    <Link
+                      href={`/work/${artwork.id}`}
+                      className="relative block aspect-[4/3] overflow-hidden rounded-lg"
+                    >
                       <Image
                         src={artwork.image}
                         alt={artwork.title}
@@ -353,9 +356,8 @@ export default function Home() {
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         onError={(e) => {
-                          // If image fails to load, use a fallback image
                           const target = e.target as HTMLImageElement;
-                          target.src = "/images/cg (3).jpg"; // Fallback to a default image
+                          target.src = "/images/cg (3).jpg";
                           console.log(
                             `Image failed to load: ${artwork.image}, using fallback`
                           );
@@ -375,7 +377,7 @@ export default function Home() {
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   </motion.div>
                 ))}
           </div>
