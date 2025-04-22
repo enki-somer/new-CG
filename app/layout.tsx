@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Space_Grotesk, Inter, Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
@@ -12,6 +12,13 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
   adjustFontFallback: false, // Changed to false to reduce processing
   weight: ["400", "500", "700"], // Only load the weights we need
+});
+
+const inter = Inter({ subsets: ["latin"] });
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["arabic"],
+  variable: "--font-noto-naskh-arabic",
 });
 
 export const metadata: Metadata = {
@@ -39,7 +46,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body
-        className={`${spaceGrotesk.className} antialiased bg-black`}
+        className={`${spaceGrotesk.className} ${inter.className} ${notoNaskhArabic.variable} antialiased bg-black`}
         suppressHydrationWarning
       >
         <CursorWrapper />

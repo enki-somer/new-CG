@@ -337,48 +337,39 @@ export default function Home() {
                   </div>
                 ))
               : featuredWorks.map((artwork, index) => (
-                  <motion.div
-                    key={artwork.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                    className="group relative overflow-hidden rounded-xl bg-gradient-glass p-1 shadow-glow backdrop-blur-sm transition-all duration-300 hover:shadow-glow-lg"
-                  >
-                    <Link
-                      href={`/work/${artwork.id}`}
-                      className="relative block aspect-[4/3] overflow-hidden rounded-lg"
+                  <Link href={`/work/${artwork.id}`} key={artwork.id}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/10 p-1 backdrop-blur-sm"
                     >
-                      <Image
-                        src={artwork.image}
-                        alt={artwork.title}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/images/cg (3).jpg";
-                          console.log(
-                            `Image failed to load: ${artwork.image}, using fallback`
-                          );
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-dark opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                      <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-all duration-300 group-hover:opacity-100">
-                        <div className="transform text-white">
-                          <h3 className="mb-2 text-xl font-semibold">
-                            {artwork.title}
-                          </h3>
-                          <p className="mb-4 text-sm text-gray-300/90">
-                            {artwork.description}
-                          </p>
-                          <span className="inline-block rounded-full bg-gradient-to-r from-primary/20 to-accent/20 px-3 py-1 text-sm text-primary-light backdrop-blur-sm">
-                            {artwork.category}
-                          </span>
+                      <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                        <Image
+                          src={artwork.image}
+                          alt={artwork.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                        <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-all duration-300 group-hover:opacity-100">
+                          <div className="w-full">
+                            <h3 className="mb-2 text-xl font-semibold text-white">
+                              {artwork.title}
+                            </h3>
+                            <p className="mb-2 text-sm text-gray-300">
+                              {artwork.description.length > 100
+                                ? artwork.description.substring(0, 100) + "..."
+                                : artwork.description}
+                            </p>
+                            <span className="inline-block rounded-full bg-primary/20 px-3 py-1 text-sm text-primary">
+                              {artwork.category}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </Link>
-                  </motion.div>
+                    </motion.div>
+                  </Link>
                 ))}
           </div>
 

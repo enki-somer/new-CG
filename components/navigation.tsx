@@ -6,10 +6,12 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const routes = [
   { href: "/", label: "Home" },
   { href: "/work", label: "Work" },
+  { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
   { href: "/admin", label: "Admin", adminOnly: true },
@@ -17,7 +19,28 @@ const routes = [
 
 export function Navigation() {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [showRegister, setShowRegister] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch("/api/auth/check-registration");
+        const data = await response.json();
+        setShowRegister(!data.isRegistered);
+      } catch (error) {
+        console.error("Failed to check admin status:", error);
+      }
+    };
+    checkAdmin();
+  }, []);
+
+  const allRoutes = showRegister
+    ? [
+        ...routes,
+        { href: "/register", label: "Register Admin", adminOnly: true },
+      ]
+    : routes;
 
   return (
     <motion.header
@@ -38,7 +61,7 @@ export function Navigation() {
           />
         </Link>
         <nav className="hidden md:flex md:gap-8">
-          {routes
+          {allRoutes
             .filter((route) => !route.adminOnly || pathname === "/admin")
             .map((route) => (
               <Link
@@ -85,7 +108,7 @@ export function Navigation() {
         className="absolute left-0 w-full border-t border-white/10 bg-black/95 px-4 py-6 backdrop-blur-md md:hidden"
       >
         <div className="container flex flex-col gap-4">
-          {routes
+          {allRoutes
             .filter((route) => !route.adminOnly || pathname === "/admin")
             .map((route) => (
               <Link
