@@ -14,8 +14,13 @@ import {
   MapPin,
   Plus,
   X,
+  Shield,
+  Pencil,
+  BookOpen,
 } from "lucide-react";
 import Image from "next/image";
+import QRCode from "qrcode";
+import Link from "next/link";
 
 interface ArtworkItem {
   id: string;
@@ -45,9 +50,31 @@ interface SiteInfo {
   contact: ContactInfo;
 }
 
+interface BlogPost {
+  id: string;
+  title: string;
+  content: string;
+  coverImage: string;
+  tags: string[];
+  createdAt: string;
+  language: "en" | "ar";
+}
+
+interface BlogPostForm {
+  title: string;
+  content: string;
+  coverImage: string;
+  tags: string;
+  language: "en" | "ar";
+}
+
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
+  const [token, setToken] = useState("");
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [showRegisterButton, setShowRegisterButton] = useState(false);
   const [artworks, setArtworks] = useState<ArtworkItem[]>([]);
   const [newArtwork, setNewArtwork] = useState({
     title: "",
@@ -61,9 +88,9 @@ export default function AdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // New state for managing tabs and site info
-  const [activeTab, setActiveTab] = useState<"gallery" | "about" | "contact">(
-    "gallery"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "gallery" | "about" | "contact" | "blog"
+  >("gallery");
   const [siteInfo, setSiteInfo] = useState<SiteInfo>({
     about: {
       title: "About Me",
@@ -89,6 +116,36 @@ export default function AdminPage() {
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   const [editingArtwork, setEditingArtwork] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ArtworkItem>>({});
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [newBlogPost, setNewBlogPost] = useState<BlogPostForm>({
+    title: "",
+    content: "",
+    coverImage: "",
+    tags: "",
+    language: "en",
+  });
+  const [editingPost, setEditingPost] = useState<string | null>(null);
+  const [editPostForm, setEditPostForm] = useState<BlogPostForm>({
+    title: "",
+    content: "",
+    coverImage: "",
+    tags: "",
+    language: "en",
+  });
+
+  // Check if admin exists
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch("/api/auth/check-registration");
+        const data = await response.json();
+        setShowRegisterButton(!data.isRegistered);
+      } catch (error) {
+        console.error("Failed to check admin status:", error);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -107,6 +164,12 @@ export default function AdminPage() {
       fetchSiteInfo();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && activeTab === "blog") {
+      fetchBlogPosts();
+    }
+  }, [isAuthenticated, activeTab]);
 
   const fetchArtworks = async () => {
     try {
@@ -162,16 +225,110 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const fetchBlogPosts = async () => {
+    try {
+      const response = await fetch("/api/blog");
+      if (!response.ok) throw new Error("Failed to fetch blog posts");
+      const data = await response.json();
+      setPosts(data);
+      return data;
+    } catch (error) {
+      console.error("Failed to fetch blog posts:", error);
+      setError("Failed to fetch blog posts");
+      return [];
+    }
+  };
+
+  // Function to handle QR code generation
+  const generateQRCode = async (otpauthUrl: string) => {
+    try {
+      console.log("Generating QR code for:", otpauthUrl);
+      const url = await QRCode.toDataURL(otpauthUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#ffffff",
+        },
+      });
+      console.log("QR code generated successfully");
+      return url;
+    } catch (error) {
+      console.error("Failed to generate QR code:", error);
+      return null;
+    }
+  };
+
+  // Function to handle initial password verification
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this should be a secure authentication process
-    if (password === "Bat160") {
-      setIsAuthenticated(true);
-      setError("");
-      fetchArtworks();
-      fetchSiteInfo();
-    } else {
-      setError("Invalid password");
+    setError("");
+
+    try {
+      // Fetch 2FA setup with password verification
+      const response = await fetch("/api/auth/setup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      if (response.status === 401) {
+        setError("Invalid password");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch 2FA setup");
+      }
+
+      const data = await response.json();
+      console.log("2FA setup data received");
+
+      if (data.otpauth) {
+        const qrCodeDataUrl = await generateQRCode(data.otpauth);
+        if (qrCodeDataUrl) {
+          setQrCodeUrl(qrCodeDataUrl);
+          setShowTokenInput(true);
+        } else {
+          setError("Failed to generate QR code");
+        }
+      } else {
+        setError("Invalid 2FA setup response");
+      }
+    } catch (error) {
+      console.error("Failed to fetch 2FA setup:", error);
+      setError("Failed to set up 2FA");
+    }
+  };
+
+  // Function to handle complete login with 2FA
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password, token }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsAuthenticated(true);
+        fetchArtworks();
+        fetchSiteInfo();
+      } else {
+        setError(data.error || "Authentication failed");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("Failed to authenticate");
     }
   };
 
@@ -296,7 +453,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: File): Promise<string | null> => {
     try {
       setIsLoading(true);
       setError("");
@@ -322,12 +479,56 @@ export default function AdminPage() {
       if (data.url) {
         setNewArtwork({ ...newArtwork, image: data.url });
         setSuccess("Image uploaded successfully!");
+        return data.url;
       } else {
         throw new Error("No image URL returned from server");
       }
     } catch (error: any) {
       console.error("Failed to upload image:", error);
       setError(`Failed to upload image: ${error.message || "Unknown error"}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBlogCoverImageUpload = async (
+    file: File
+  ): Promise<string | null> => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      console.log("Uploading blog cover image to Cloudinary...");
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        throw new Error(`Failed to upload cover image: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log("Blog cover image upload successful:", data);
+
+      if (data.url) {
+        setNewBlogPost({ ...newBlogPost, coverImage: data.url });
+        setSuccess("Cover image uploaded successfully!");
+        return data.url;
+      } else {
+        throw new Error("No image URL returned from server");
+      }
+    } catch (error: any) {
+      console.error("Failed to upload cover image:", error);
+      setError(
+        `Failed to upload cover image: ${error.message || "Unknown error"}`
+      );
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -575,6 +776,133 @@ export default function AdminPage() {
     }
   };
 
+  const handleAddBlogPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // Check if we have a cover image in the state
+      if (!newBlogPost.coverImage || newBlogPost.coverImage.trim() === "") {
+        setError("Please upload a cover image first");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("Creating blog post with data:", newBlogPost);
+
+      const response = await fetch("/api/blog", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...newBlogPost,
+          tags: newBlogPost.tags
+            .split(",")
+            .map((tag: string) => tag.trim())
+            .filter(Boolean),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create blog post");
+      }
+
+      setSuccess("Blog post created successfully!");
+      setNewBlogPost({
+        title: "",
+        content: "",
+        coverImage: "",
+        tags: "",
+        language: "en",
+      });
+      await fetchBlogPosts();
+    } catch (error: any) {
+      console.error("Failed to create blog post:", error);
+      setError(error.message || "Failed to create blog post");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStartEdit = (post: BlogPost) => {
+    setEditingPost(post.id);
+    setEditPostForm({
+      title: post.title,
+      content: post.content,
+      coverImage: post.coverImage,
+      tags: post.tags.join(", "),
+      language: post.language,
+    });
+  };
+
+  const handleUpdateBlogPost = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const response = await fetch(`/api/blog/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: editPostForm.title,
+          content: editPostForm.content,
+          coverImage: editPostForm.coverImage,
+          tags: editPostForm.tags
+            .split(",")
+            .map((tag: string) => tag.trim())
+            .filter(Boolean),
+          language: editPostForm.language,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update blog post");
+
+      setSuccess("Blog post updated successfully!");
+      setEditingPost(null);
+      setEditPostForm({
+        title: "",
+        content: "",
+        coverImage: "",
+        tags: "",
+        language: "en",
+      });
+      const updatedPosts = await fetchBlogPosts();
+      setPosts(updatedPosts);
+    } catch (error) {
+      console.error("Failed to update blog post:", error);
+      setError("Failed to update blog post");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteBlogPost = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const response = await fetch(`/api/blog/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete blog post");
+
+      setSuccess("Blog post deleted successfully!");
+      await fetchBlogPosts();
+    } catch (error) {
+      console.error("Failed to delete blog post:", error);
+      setError("Failed to delete blog post");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-black via-primary/20 to-black pt-24">
@@ -592,24 +920,72 @@ export default function AdminPage() {
               <h1 className="mb-6 text-center text-2xl font-bold text-white">
                 Admin Access
               </h1>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Enter admin password"
-                  />
-                </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <button
-                  type="submit"
-                  className="w-full rounded-lg bg-primary px-4 py-2.5 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black"
-                >
-                  Login
-                </button>
-              </form>
+
+              {!showTokenInput ? (
+                // Password Form
+                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                  <div>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Enter admin password"
+                    />
+                  </div>
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-primary px-4 py-2.5 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black"
+                  >
+                    Continue
+                  </button>
+                  {showRegisterButton && (
+                    <Link
+                      href="/register"
+                      className="mt-4 block w-full rounded-lg border border-primary px-4 py-2.5 text-center text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black"
+                    >
+                      Register Admin Account
+                    </Link>
+                  )}
+                </form>
+              ) : (
+                // 2FA Form
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-white">
+                      <Shield className="h-4 w-4 text-primary" />
+                      Enter 2FA Code
+                    </label>
+                    <input
+                      type="text"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="Enter 6-digit code"
+                      maxLength={6}
+                      pattern="\d{6}"
+                      required
+                    />
+                  </div>
+                  {error && <p className="text-sm text-red-500">{error}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowTokenInput(false)}
+                      className="w-1/3 rounded-lg border border-white/20 px-4 py-2.5 text-white hover:bg-white/10"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="w-2/3 rounded-lg bg-primary px-4 py-2.5 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black"
+                    >
+                      Login
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </motion.div>
         </div>
@@ -653,6 +1029,16 @@ export default function AdminPage() {
               }`}
             >
               Gallery
+            </button>
+            <button
+              onClick={() => setActiveTab("blog")}
+              className={`mr-4 pb-2 text-lg font-medium transition-colors ${
+                activeTab === "blog"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-white/70 hover:text-white"
+              }`}
+            >
+              Blog
             </button>
             <button
               onClick={() => setActiveTab("about")}
@@ -959,7 +1345,10 @@ export default function AdminPage() {
                                 </div>
                               </div>
                               <p className="mb-2 text-sm text-gray-300">
-                                {artwork.description}
+                                {artwork.description.length > 100
+                                  ? artwork.description.substring(0, 100) +
+                                    "..."
+                                  : artwork.description}
                               </p>
                               <p className="text-sm text-primary">
                                 {artwork.category}
@@ -970,6 +1359,296 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Blog Tab Content */}
+          {activeTab === "blog" && (
+            <>
+              {/* Add New Blog Post Form */}
+              <div className="mb-12 rounded-xl bg-gradient-to-br from-white/5 to-white/10 p-6 backdrop-blur-sm">
+                <h2 className="mb-6 text-xl font-semibold text-white">
+                  Add New Blog Post
+                </h2>
+                <form onSubmit={handleAddBlogPost} className="grid gap-6">
+                  <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-white">
+                        Title
+                      </label>
+                      <input
+                        type="text"
+                        value={newBlogPost.title}
+                        onChange={(e) =>
+                          setNewBlogPost({
+                            ...newBlogPost,
+                            title: e.target.value,
+                          })
+                        }
+                        className={`w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary ${
+                          newBlogPost.language === "ar"
+                            ? "font-noto-naskh-arabic text-right"
+                            : ""
+                        }`}
+                        dir={newBlogPost.language === "ar" ? "rtl" : "ltr"}
+                        placeholder="Blog post title"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-white">
+                        Language
+                      </label>
+                      <select
+                        value={newBlogPost.language}
+                        onChange={(e) =>
+                          setNewBlogPost({
+                            ...newBlogPost,
+                            language: e.target.value as "en" | "ar",
+                          })
+                        }
+                        className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="en">English</option>
+                        <option value="ar">العربية</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-white">
+                      Content
+                    </label>
+                    <textarea
+                      value={newBlogPost.content}
+                      onChange={(e) =>
+                        setNewBlogPost({
+                          ...newBlogPost,
+                          content: e.target.value,
+                        })
+                      }
+                      className={`w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary ${
+                        newBlogPost.language === "ar"
+                          ? "font-noto-naskh-arabic text-right"
+                          : ""
+                      }`}
+                      dir={newBlogPost.language === "ar" ? "rtl" : "ltr"}
+                      placeholder="Blog post content"
+                      rows={10}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-white">
+                      Tags (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={newBlogPost.tags}
+                      onChange={(e) =>
+                        setNewBlogPost({
+                          ...newBlogPost,
+                          tags: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder:text-white/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="tag1, tag2, tag3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-white">
+                      Cover Image
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleBlogCoverImageUpload(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="blog-cover-image"
+                        required={!newBlogPost.coverImage}
+                      />
+                      <label
+                        htmlFor="blog-cover-image"
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-white hover:bg-white/20"
+                      >
+                        <Upload className="h-5 w-5" />
+                        Choose Image
+                      </label>
+                      {newBlogPost.coverImage && (
+                        <span className="text-sm text-white/70">
+                          Cover image selected
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="rounded-lg bg-primary px-4 py-2.5 text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50"
+                  >
+                    {isLoading ? "Creating..." : "Create Blog Post"}
+                  </button>
+                </form>
+              </div>
+
+              {/* Existing Blog Posts */}
+              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {posts.map((post) => (
+                  <motion.article
+                    key={post.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm"
+                  >
+                    <div className="relative aspect-[16/9] overflow-hidden">
+                      <Image
+                        src={post.coverImage}
+                        alt={post.title}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                    </div>
+                    <div className="p-6">
+                      {editingPost === post.id ? (
+                        <div className="space-y-4">
+                          <input
+                            type="text"
+                            value={editPostForm.title || ""}
+                            onChange={(e) =>
+                              setEditPostForm({
+                                ...editPostForm,
+                                title: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-lg border border-white/20 bg-black/50 px-3 py-1.5 text-white"
+                            placeholder="Title"
+                          />
+                          <textarea
+                            value={editPostForm.content || ""}
+                            onChange={(e) =>
+                              setEditPostForm({
+                                ...editPostForm,
+                                content: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-lg border border-white/20 bg-black/50 px-3 py-1.5 text-white"
+                            placeholder="Content"
+                            rows={3}
+                          />
+                          <input
+                            type="text"
+                            value={editPostForm.tags || ""}
+                            onChange={(e) =>
+                              setEditPostForm({
+                                ...editPostForm,
+                                tags: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-lg border border-white/20 bg-black/50 px-3 py-1.5 text-white"
+                            placeholder="Tags (comma-separated)"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateBlogPost(post.id)}
+                              disabled={isLoading}
+                              className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90"
+                            >
+                              <Save className="h-4 w-4" />
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingPost(null);
+                                setEditPostForm({
+                                  title: "",
+                                  content: "",
+                                  coverImage: "",
+                                  tags: "",
+                                  language: "en",
+                                });
+                              }}
+                              className="flex items-center gap-1 rounded-lg bg-gray-500 px-3 py-1.5 text-sm text-white hover:bg-gray-600"
+                            >
+                              <X className="h-4 w-4" />
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="mb-4 flex items-center justify-between">
+                            <h3 className="text-xl font-semibold text-white">
+                              {post.title}
+                            </h3>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleStartEdit(post)}
+                                className="rounded-full bg-primary/20 p-2 text-primary hover:bg-primary/30"
+                              >
+                                <Pencil className="h-5 w-5" />
+                              </button>
+                              {deleteConfirm === post.id ? (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteBlogPost(post.id)
+                                    }
+                                    className="rounded-lg bg-red-500 px-3 py-1 text-sm text-white hover:bg-red-600"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm(null)}
+                                    className="rounded-lg bg-gray-500 px-3 py-1 text-sm text-white hover:bg-gray-600"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeleteConfirm(post.id)}
+                                  className="rounded-full bg-red-500/20 p-2 text-red-500 hover:bg-red-500/30"
+                                >
+                                  <Trash2 className="h-5 w-5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mb-4 flex flex-wrap gap-2">
+                            {post.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-primary/20 px-3 py-1 text-xs text-primary"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="mb-4 text-sm text-gray-400">
+                            {post.content.length > 150
+                              ? post.content.substring(0, 150) + "..."
+                              : post.content}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </motion.article>
                 ))}
               </div>
             </>
