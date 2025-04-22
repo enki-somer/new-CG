@@ -23,45 +23,56 @@ export default function RegisterPage() {
   useEffect(() => {
     const checkRegistration = async () => {
       try {
+        console.log("[Register Page] Checking admin registration status...");
+
         const response = await fetch("/api/auth/check-registration", {
           method: "GET",
           cache: "no-store",
           headers: {
             "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
+              "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
             Pragma: "no-cache",
-            Expires: "0",
+            Expires: "-1",
             "Surrogate-Control": "no-store",
           },
         });
 
         if (!response.ok) {
-          throw new Error("Failed to check registration status");
+          throw new Error(
+            `Failed to check registration status: ${response.status}`
+          );
         }
 
         const data = await response.json();
         console.log("[Register Page] Registration check response:", data);
 
         if (data.isRegistered) {
-          // If admin exists, redirect to home
-          router.push("/");
-        } else {
-          // Only show registration form if no admin exists
-          setCanAccess(true);
+          console.log("[Register Page] Admin exists, redirecting to home...");
+          router.replace("/");
+          return;
         }
+
+        console.log(
+          "[Register Page] No admin found, showing registration form"
+        );
+        setCanAccess(true);
       } catch (error) {
         console.error("[Register Page] Registration check error:", error);
-        setError("Failed to check registration status");
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to check registration status"
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
+    // Initial check
     checkRegistration();
 
-    // Check every 5 seconds
+    // Periodic check
     const interval = setInterval(checkRegistration, 5000);
-
     return () => clearInterval(interval);
   }, [router]);
 
