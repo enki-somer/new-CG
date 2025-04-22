@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [canAccess, setCanAccess] = useState(false);
@@ -24,32 +24,77 @@ export default function RegisterPage() {
     const checkRegistration = async () => {
       try {
         const response = await fetch("/api/auth/check-registration", {
+          method: "GET",
           cache: "no-store",
           headers: {
-            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate",
             Pragma: "no-cache",
+            Expires: "0",
+            "Surrogate-Control": "no-store",
           },
         });
+
         if (!response.ok) {
           throw new Error("Failed to check registration status");
         }
+
         const data = await response.json();
-        setCanAccess(!data.isRegistered);
+        console.log("[Register Page] Registration check response:", data);
+
+        if (data.isRegistered) {
+          // If admin exists, redirect to home
+          router.push("/");
+        } else {
+          // Only show registration form if no admin exists
+          setCanAccess(true);
+        }
       } catch (error) {
-        console.error("Failed to check registration status:", error);
+        console.error("[Register Page] Registration check error:", error);
         setError("Failed to check registration status");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Check immediately
     checkRegistration();
 
-    // Recheck every 5 seconds while the page is open
+    // Check every 5 seconds
     const interval = setInterval(checkRegistration, 5000);
 
-    // Cleanup interval on unmount
     return () => clearInterval(interval);
-  }, []);
+  }, [router]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-black via-primary/20 to-black pt-24">
+        <div className="text-center text-white">
+          Checking registration status...
+        </div>
+      </main>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-black via-primary/20 to-black pt-24">
+        <div className="text-center text-red-500">{error}</div>
+      </main>
+    );
+  }
+
+  // If admin exists, this will never show as we redirect in useEffect
+  if (!canAccess) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-black via-primary/20 to-black pt-24">
+        <div className="text-center text-white">
+          Registration is not available. An admin account already exists.
+        </div>
+      </main>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,16 +174,6 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
-
-  if (!canAccess) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-black via-primary/20 to-black pt-24">
-        <div className="text-center text-white">
-          Registration is not available. An admin account already exists.
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-black via-primary/20 to-black pt-24">
