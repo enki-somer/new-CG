@@ -23,7 +23,16 @@ export default function RegisterPage() {
   useEffect(() => {
     const checkRegistration = async () => {
       try {
-        const response = await fetch("/api/auth/check-registration");
+        const response = await fetch("/api/auth/check-registration", {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to check registration status");
+        }
         const data = await response.json();
         setCanAccess(!data.isRegistered);
       } catch (error) {
@@ -31,7 +40,15 @@ export default function RegisterPage() {
         setError("Failed to check registration status");
       }
     };
+
+    // Check immediately
     checkRegistration();
+
+    // Recheck every 5 seconds while the page is open
+    const interval = setInterval(checkRegistration, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
