@@ -3,9 +3,6 @@ import type { NextRequest } from 'next/server'
 import { firestore } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-// Edge runtime is required for middleware
-export const runtime = 'edge';
-
 export async function middleware(request: NextRequest) {
   // Only run on /register
   if (request.nextUrl.pathname === '/register') {
